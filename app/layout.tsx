@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
+import { AppShell } from "@/components/app-shell";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({
@@ -29,7 +31,9 @@ export default function RootLayout({
         className={cn("min-h-full flex flex-col font-sans", inter.variable)}
         suppressHydrationWarning
       >
-        {children}
+        <TooltipProvider delayDuration={0}>
+          <AppShell>{children}</AppShell>
+        </TooltipProvider>
       </body>
     </html>
   );
