@@ -76,31 +76,38 @@ export function WorkspaceHuddleCard({
 
   const body = (
     <>
-      <div className="flex w-full min-w-0 items-center justify-between gap-2 pr-1">
-        <h3 className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+      <div className="relative flex w-full min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-2">
+        <h3 className="min-w-0 text-[10px] font-bold tracking-wider text-muted-foreground uppercase sm:flex-1 sm:pr-32">
           HUDDLE
         </h3>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          className="shrink-0"
-          disabled={composerOpen}
-          onClick={() => {
-            setComposerOpen(true);
-            setDraft("");
-          }}
+        <div
+          className={cn(
+            "flex shrink-0 justify-end",
+            "sm:absolute sm:top-1/2 sm:right-0 sm:max-w-[min(12rem,calc(100%-0.5rem))] sm:-translate-y-1/2",
+          )}
         >
-          + Add task
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            className="shrink-0"
+            disabled={composerOpen}
+            onClick={() => {
+              setComposerOpen(true);
+              setDraft("");
+            }}
+          >
+            + Add task
+          </Button>
+        </div>
       </div>
-      <ul className="mt-3 block w-full min-w-0 list-none p-0">
+      <ul className="mt-2 block w-full min-w-0 list-none p-0">
         {tasks.map((task) => {
           const controlId = `huddle-${appointment.id}-${task.id}`;
           return (
             <li
               key={task.id}
-              className="group flex w-full min-w-0 items-center gap-2 py-1.5 md:py-0.5"
+              className="group flex w-full min-w-0 items-start gap-2 py-1 md:py-0.5"
             >
               <Checkbox
                 id={controlId}
@@ -109,7 +116,7 @@ export function WorkspaceHuddleCard({
                   if (state === "indeterminate") return;
                   toggleTask(task.id, state === true);
                 }}
-                className="shrink-0"
+                className="mt-0.5 shrink-0"
               />
               <label
                 htmlFor={controlId}
@@ -125,7 +132,7 @@ export function WorkspaceHuddleCard({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "size-8 shrink-0 text-muted-foreground transition-opacity hover:bg-destructive/10 hover:text-destructive",
+                  "mt-0.5 size-7 shrink-0 text-muted-foreground transition-opacity hover:bg-destructive/10 hover:text-destructive md:size-8",
                   "max-md:opacity-100 md:opacity-0 md:group-hover:opacity-100 group-focus-within:opacity-100",
                 )}
                 aria-label={`Delete task: ${task.text}`}
@@ -135,7 +142,7 @@ export function WorkspaceHuddleCard({
                   removeTask(task.id);
                 }}
               >
-                <Trash2 className="size-4" aria-hidden />
+                <Trash2 className="size-3.5 md:size-4" aria-hidden />
               </Button>
             </li>
           );
@@ -143,10 +150,10 @@ export function WorkspaceHuddleCard({
         {composerOpen ? (
           <li
             ref={composerRowRef}
-            className="flex w-full min-w-0 items-center gap-2 py-1.5 md:py-0.5"
+            className="flex w-full min-w-0 items-start gap-2 py-1 md:py-0.5"
           >
             <span
-              className="flex shrink-0 cursor-text"
+              className="mt-0.5 flex shrink-0 cursor-text"
               onMouseDown={(e) => {
                 e.preventDefault();
                 inputRef.current?.focus();
@@ -186,16 +193,29 @@ export function WorkspaceHuddleCard({
     </>
   );
 
+  const huddleSectionSurface =
+    "border border-border bg-muted/40 shadow-md ring-1 ring-border/50";
+
   if (layout === "mobile") {
     return (
-      <section className="block w-full rounded-xl border border-border bg-background p-4 shadow-sm">
+      <section
+        className={cn(
+          "block w-full rounded-xl px-4 pt-4 pb-2",
+          huddleSectionSurface,
+        )}
+      >
         {body}
       </section>
     );
   }
 
   return (
-    <section className="mb-6 block w-full rounded-lg border border-border bg-background p-6 shadow-sm">
+    <section
+      className={cn(
+        "block w-full rounded-lg px-6 pt-6 pb-4",
+        huddleSectionSurface,
+      )}
+    >
       {body}
     </section>
   );

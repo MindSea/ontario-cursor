@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import type { Appointment } from "./types";
 
 import { AppointmentMasterList } from "./appointment-master-list";
+import { PrevisitSection } from "./previsit-section";
 import { WorkspaceHuddleCard } from "./workspace-huddle-card";
 import { WorkspacePinnedHeader } from "./workspace-pinned-header";
 
@@ -94,14 +95,19 @@ export function ClinicFlowDesktop({
                 className="shrink-0"
               />
               <div
-                className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-background px-8 pb-6"
+                className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-background px-8 pb-4"
                 aria-label="Workspace"
               >
                 <div className="h-[280px] md:hidden" aria-hidden />
                 <div className="hidden h-6 md:block" aria-hidden />
-                <div className="hidden md:block">
+                <div className="hidden md:block space-y-6">
                   <WorkspaceHuddleCard
                     key={selectedAppointment.id}
+                    appointment={selectedAppointment}
+                    layout="desktop"
+                  />
+                  <PrevisitSection
+                    key={`${selectedAppointment.id}-previsit`}
                     appointment={selectedAppointment}
                     layout="desktop"
                   />

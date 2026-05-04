@@ -7,6 +7,7 @@ import type { Appointment } from "./types";
 
 import { AppointmentMasterList } from "./appointment-master-list";
 import { ScheduleDateRow } from "./schedule-date-row";
+import { PrevisitSection } from "./previsit-section";
 import { WorkspaceHuddleCard } from "./workspace-huddle-card";
 import { WorkspacePinnedHeader } from "./workspace-pinned-header";
 
@@ -133,9 +134,14 @@ export function ClinicFlowMobile({
                   aria-hidden="true"
                 />
                 {/* Side gutters + bottom margin above browser chrome. */}
-                <div className="mb-32 block w-full px-4">
+                <div className="mb-32 block w-full space-y-4 px-4">
                   <WorkspaceHuddleCard
                     key={selectedAppointment.id}
+                    appointment={selectedAppointment}
+                    layout="mobile"
+                  />
+                  <PrevisitSection
+                    key={`${selectedAppointment.id}-previsit`}
                     appointment={selectedAppointment}
                     layout="mobile"
                   />
