@@ -2,14 +2,23 @@
 
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { MessageSquare, Phone } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { textBody, textMeta, textOverline } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
+import { MutedTagBadge } from "./muted-tag-badge";
 import type { Appointment } from "./types";
 
 type TransportStatus =
@@ -18,8 +27,8 @@ type TransportStatus =
   | "En Route"
   | "Arrived";
 
-/** Muted meta lines (missing forms, last attempt, duration copy, etc.). */
-const PREVISIT_SECONDARY = "text-xs leading-snug text-muted-foreground";
+/** Interactive checklist rows (checkboxes only). */
+const PREVISIT_CHECKBOX_TOTAL = 5;
 
 /** When the row checkbox is checked, secondary lines ease back slightly (title carries “done”). */
 const PREVISIT_META_WHEN_ROW_DONE = "opacity-70";
@@ -28,14 +37,7 @@ const PREVISIT_META_WHEN_ROW_DONE = "opacity-70";
 const PREVISIT_NUM_EMPHASIS = "tabular-nums font-medium text-foreground/80";
 
 function ReadonlyStatusBadge({ label }: { label: string }) {
-  return (
-    <Badge
-      variant="secondary"
-      className="h-5 min-h-5 w-fit max-w-full shrink-0 rounded-md border-0 bg-muted px-2 py-0 text-xs font-medium leading-tight text-muted-foreground"
-    >
-      {label}
-    </Badge>
-  );
+  return <MutedTagBadge className="max-w-full">{label}</MutedTagBadge>;
 }
 
 function PrevisitRow({
@@ -63,13 +65,15 @@ function PrevisitRow({
   );
 }
 
-const previsitItemTitleClass =
-  "min-w-0 cursor-pointer break-words text-sm leading-snug text-foreground select-none";
+const previsitItemTitleClass = cn(
+  "min-w-0 cursor-pointer break-words select-none",
+  textBody,
+);
 
 /**
- * With actions: below `lg`, title is on its own row then pills + actions share a row.
- * From `lg` up, the title uses the full width inside `pr-*` (not squeezed beside pills),
- * pills sit on a second row, and actions stay absolutely on the right.
+ * With actions: title stays `w-fit` beside a cluster of tags + buttons. The cluster uses
+ * `items-center` so badges line up with taller outline buttons; below `lg` the cluster
+ * wraps with the title. From `lg` up, actions are absolute on the right; `pr-56` reserves space.
  */
 function PrevisitItemHeader({
   titleId,
@@ -90,53 +94,58 @@ function PrevisitItemHeader({
   );
   const extraWrapClass = cn(checked && PREVISIT_META_WHEN_ROW_DONE);
 
+  /** Width follows content so tags sit next to the title; min-w-0 still allows wrapping when tight. */
+  const titleClusterWidth = "w-fit min-w-0 max-w-full";
+
   if (!actions) {
     return (
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-        <label htmlFor={titleId} className={titleClass}>
+      <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
+        <label
+          htmlFor={titleId}
+          className={cn(titleClass, leftExtra ? titleClusterWidth : null)}
+        >
           {title}
         </label>
         {leftExtra ? (
-          <span className={cn("min-w-0", extraWrapClass)}>{leftExtra}</span>
+          <span
+            className={cn(
+              "flex shrink-0 flex-wrap items-center gap-2",
+              extraWrapClass,
+            )}
+          >
+            {leftExtra}
+          </span>
         ) : null}
       </div>
     );
   }
 
   return (
-    <div className="relative">
-      {/* Below lg: title row, then pills + buttons (reliable on tablet / narrow desktop). */}
-      <div className="flex min-w-0 flex-col gap-2 lg:hidden">
-        <label htmlFor={titleId} className={titleClass}>
+    <div className="relative min-w-0 lg:pr-56">
+      <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-2">
+        <label htmlFor={titleId} className={cn(titleClass, titleClusterWidth)}>
           {title}
         </label>
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
           {leftExtra ? (
-            <span className={cn("min-w-0", extraWrapClass)}>{leftExtra}</span>
-          ) : null}
-          {actions}
-        </div>
-      </div>
-
-      {/* lg+: title uses full row width inside reserved gutter; pills below; actions absolute. */}
-      <div className="relative hidden lg:block">
-        <div className="min-w-0 pr-56">
-          <label htmlFor={titleId} className={cn(titleClass, "block")}>
-            {title}
-          </label>
-          {leftExtra ? (
-            <div
+            <span
               className={cn(
-                "mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1",
+                "flex shrink-0 flex-wrap items-center gap-2",
                 extraWrapClass,
               )}
             >
               {leftExtra}
-            </div>
+            </span>
           ) : null}
-        </div>
-        <div className="absolute top-1/2 right-0 flex w-auto max-w-[min(22rem,calc(100%-0.5rem))] -translate-y-1/2 flex-wrap items-center justify-end gap-2">
-          {actions}
+          <div
+            className={cn(
+              "flex min-w-0 flex-wrap items-center justify-start gap-2",
+              "lg:absolute lg:top-1/2 lg:right-0 lg:-translate-y-1/2 lg:justify-end",
+              "lg:max-w-[min(22rem,calc(100%-0.5rem))]",
+            )}
+          >
+            {actions}
+          </div>
         </div>
       </div>
     </div>
@@ -179,6 +188,46 @@ export function PrevisitSection({
 
   const [item5Checked, setItem5Checked] = useState(false);
   const [medNotes, setMedNotes] = useState("");
+  const [previsitCollapsed, setPrevisitCollapsed] = useState(false);
+  const [previsitUncheckOpen, setPrevisitUncheckOpen] = useState(false);
+
+  const previsitCheckedCount = useMemo(
+    () =>
+      [
+        item1Checked,
+        item2Checked,
+        item3Checked,
+        item4Checked,
+        item5Checked,
+      ].filter(Boolean).length,
+    [
+      item1Checked,
+      item2Checked,
+      item3Checked,
+      item4Checked,
+      item5Checked,
+    ],
+  );
+
+  const checkAllPrevisit = useCallback(() => {
+    setItem1Checked(true);
+    setItem2Checked(true);
+    setItem3Checked(true);
+    setItem4Checked(true);
+    setItem5Checked(true);
+  }, []);
+
+  const uncheckAllPrevisit = useCallback(() => {
+    setItem1Checked(false);
+    setItem2Checked(false);
+    setItem3Checked(false);
+    setItem4Checked(false);
+    setItem5Checked(false);
+    setPrevisitUncheckOpen(false);
+  }, []);
+
+  const allPrevisitChecked = previsitCheckedCount === PREVISIT_CHECKBOX_TOTAL;
+
   const medsOnFile = useMemo(() => {
     const n = parseInt(appointment.id, 10);
     if (Number.isNaN(n)) return 8;
@@ -195,24 +244,71 @@ export function PrevisitSection({
       ? "block w-full rounded-xl border border-border bg-background px-4 pt-4 pb-2 shadow-sm"
       : "mb-0 block w-full rounded-lg border border-border bg-background px-6 pt-6 pb-4 shadow-sm";
 
-  const inputSm = cn(
-    "h-8 text-sm md:text-sm placeholder:text-muted-foreground",
-  );
+  const inputSm = cn("h-8 placeholder:text-muted-foreground", textBody);
 
   return (
-    <>
+    <div className="min-w-0 w-full">
       <section
-        className={cn("text-sm", sectionClass)}
+        className={cn(textBody, sectionClass)}
         aria-labelledby={`${baseId}-title`}
       >
-        <h3
-          id={`${baseId}-title`}
-          className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
-        >
-          Previsit
-        </h3>
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <h3
+            id={`${baseId}-title`}
+            className={cn(
+              textOverline,
+              "flex min-w-0 flex-nowrap items-baseline gap-x-2",
+            )}
+          >
+            <span>Previsit</span>
+            <span className="font-normal normal-case tabular-nums text-xs leading-none text-muted-foreground">
+              {previsitCheckedCount}/{PREVISIT_CHECKBOX_TOTAL}
+            </span>
+          </h3>
+          <div className="flex shrink-0 items-center gap-2">
+            {!previsitCollapsed ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="shrink-0"
+                onClick={() =>
+                  allPrevisitChecked
+                    ? setPrevisitUncheckOpen(true)
+                    : checkAllPrevisit()
+                }
+              >
+                {allPrevisitChecked ? "Uncheck All" : "Check All"}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0 bg-transparent hover:bg-muted aria-expanded:bg-transparent aria-expanded:hover:bg-muted dark:aria-expanded:bg-transparent dark:aria-expanded:hover:bg-muted/50"
+              aria-expanded={!previsitCollapsed}
+              aria-controls={`${baseId}-previsit-content`}
+              aria-label={
+                previsitCollapsed
+                  ? "Expand Previsit section"
+                  : "Collapse Previsit section"
+              }
+              onClick={() => setPrevisitCollapsed((c) => !c)}
+            >
+              {previsitCollapsed ? (
+                <ChevronDown className="size-4" aria-hidden />
+              ) : (
+                <ChevronUp className="size-4" aria-hidden />
+              )}
+            </Button>
+          </div>
+        </div>
 
-        <div className="mt-3 flex flex-col">
+        <div
+          id={`${baseId}-previsit-content`}
+          hidden={previsitCollapsed}
+          className={cn(!previsitCollapsed && "mt-3 flex flex-col")}
+        >
           {/* Item 1 */}
           <PrevisitRow
             isFirst
@@ -228,40 +324,10 @@ export function PrevisitSection({
               titleId={`${baseId}-i1`}
               title="Confirm appointment 24 hours in advance"
               checked={item1Checked}
-              actions={
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="xs"
-                    className="shrink-0 gap-1"
-                    onClick={() =>
-                      showToast(`Calling ${appointment.patientName} (demo).`)
-                    }
-                  >
-                    <Phone className="size-3 shrink-0" aria-hidden />
-                    Call
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="xs"
-                    className="shrink-0 gap-1"
-                    onClick={() =>
-                      showToast(
-                        `Message to ${appointment.patientName} (demo).`,
-                      )
-                    }
-                  >
-                    <MessageSquare className="size-3 shrink-0" aria-hidden />
-                    Message
-                  </Button>
-                </>
-              }
             />
             <p
               className={cn(
-                PREVISIT_SECONDARY,
+                textMeta,
                 item1Checked && PREVISIT_META_WHEN_ROW_DONE,
               )}
             >
@@ -295,13 +361,10 @@ export function PrevisitSection({
                   <ReadonlyStatusBadge
                     label={appointment.formCompletionStatus}
                   />
-                  <Badge
-                    variant="secondary"
-                    className="h-5 min-h-5 rounded-md border-0 bg-muted px-2 py-0 text-xs font-medium tabular-nums leading-tight text-muted-foreground"
-                  >
+                  <MutedTagBadge className="tabular-nums">
                     {appointment.formsCompleteCount}/
                     {appointment.formsTotalCount} Forms
-                  </Badge>
+                  </MutedTagBadge>
                 </>
               }
               actions={
@@ -319,7 +382,7 @@ export function PrevisitSection({
             {missingFormsLine ? (
               <p
                 className={cn(
-                  PREVISIT_SECONDARY,
+                  textMeta,
                   item2Checked && PREVISIT_META_WHEN_ROW_DONE,
                 )}
               >
@@ -394,7 +457,7 @@ export function PrevisitSection({
               <>
                 <p
                   className={cn(
-                    PREVISIT_SECONDARY,
+                    textMeta,
                     item3Checked && PREVISIT_META_WHEN_ROW_DONE,
                   )}
                 >
@@ -418,7 +481,7 @@ export function PrevisitSection({
               <>
                 <p
                   className={cn(
-                    PREVISIT_SECONDARY,
+                    textMeta,
                     item3Checked && PREVISIT_META_WHEN_ROW_DONE,
                   )}
                 >
@@ -441,7 +504,7 @@ export function PrevisitSection({
             {transportStatus === "Arrived" ? (
               <p
                 className={cn(
-                  PREVISIT_SECONDARY,
+                  textMeta,
                   item3Checked && PREVISIT_META_WHEN_ROW_DONE,
                 )}
               >
@@ -467,7 +530,7 @@ export function PrevisitSection({
             />
             <p
               className={cn(
-                PREVISIT_SECONDARY,
+                textMeta,
                 item4Checked && PREVISIT_META_WHEN_ROW_DONE,
               )}
             >
@@ -497,7 +560,7 @@ export function PrevisitSection({
             />
             <p
               className={cn(
-                PREVISIT_SECONDARY,
+                textMeta,
                 item5Checked && PREVISIT_META_WHEN_ROW_DONE,
               )}
             >
@@ -513,17 +576,50 @@ export function PrevisitSection({
             />
           </PrevisitRow>
         </div>
+
+        <Dialog open={previsitUncheckOpen} onOpenChange={setPrevisitUncheckOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Uncheck all previsit items?</DialogTitle>
+              <DialogDescription>
+                This clears every checklist checkbox in this section for this
+                visit (demo only).
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPrevisitUncheckOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={uncheckAllPrevisit}
+              >
+                Uncheck all
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </section>
 
       {toast ? (
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 left-1/2 z-200 max-w-[min(90vw,20rem)] -translate-x-1/2 rounded-lg border border-border bg-background px-4 py-2 text-center text-sm text-foreground shadow-lg"
+          className={cn(
+            "fixed bottom-6 left-1/2 z-200 max-w-[min(90vw,20rem)] -translate-x-1/2 rounded-lg border border-border bg-background px-4 py-2 text-center shadow-lg",
+            textBody,
+          )}
         >
           {toast}
         </div>
       ) : null}
-    </>
+    </div>
   );
 }

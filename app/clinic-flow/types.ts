@@ -7,6 +7,19 @@ export type AppointmentStage =
   | "CARE MANAGEMENT"
   | "WRAP UP";
 
+export type IntakeFormResultSeverity = "high" | "medium" | "low";
+
+/** One screening form row: modal table + optional `shortFlag` for the intake card summary line. */
+export type IntakeFormResultRow = {
+  id: string;
+  formLabel: string;
+  resultSummary: string;
+  navigatorAction: string;
+  /** Compact token for the one-line intake summary (e.g. `PHQ-9: 18`). */
+  shortFlag: string;
+  severity?: IntakeFormResultSeverity;
+};
+
 export type HuddleTask = {
   id: string;
   text: string;
@@ -25,6 +38,8 @@ export type Appointment = {
   date: string;
   time: string;
   patientName: string;
+  /** Date of birth (ISO `yyyy-MM-dd` for demo). */
+  dateOfBirth: string;
   room: string;
   stage: AppointmentStage;
   reason: string;
@@ -35,12 +50,15 @@ export type Appointment = {
   pcp: string;
   /** Single assigned navigator for the visit. */
   navigator: string;
-  /** Patient-side form completion (seed / server; not toggled in UI). */
+  /** Patient-side completion of the fixed intake screening bundle (seed / server; not toggled in UI). */
   formCompletionStatus: FormCompletionStatus;
-  /** Outstanding form names (Title Case); empty when none missing. */
+  /** Outstanding forms from the eight-form bundle (`intake-form-catalog` names); empty when none missing. */
   missingFormNames: readonly string[];
-  /** Completed count for `formsTotalCount` portal forms. */
+  /** Completed count for the eight intake screening forms (`formsTotalCount`). */
   formsCompleteCount: number;
+  /** Always the intake screening bundle size (8). */
   formsTotalCount: number;
+  /** Screening form results for this visit (seed-only; drives intake flags + results modal). */
+  intakeFormResults: readonly IntakeFormResultRow[];
   huddleTasks: HuddleTask[];
 };

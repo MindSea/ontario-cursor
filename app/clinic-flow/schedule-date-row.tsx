@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { textBody } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 function formatTimelineDayLabel(date: Date): string {
@@ -29,7 +30,7 @@ export function ScheduleDateRow({
   return (
     <div
       className={cn(
-        "m-0 grid h-9 w-full shrink-0 grid-cols-[auto_1fr_auto] items-center border-b border-border/40 bg-background",
+        "sticky top-0 z-10 m-0 grid h-9 w-full shrink-0 grid-cols-[auto_1fr_auto] items-center border-b border-border/40 bg-background",
         fullBleed ? "px-0" : "px-1",
         className,
       )}
@@ -47,14 +48,19 @@ export function ScheduleDateRow({
         </Button>
       </div>
       <div className="flex items-center justify-center gap-2 px-1">
-        <span className=" truncate text-center text-sm font-medium whitespace-nowrap text-foreground">
+        <span
+          className={cn(
+            "truncate text-center font-medium whitespace-nowrap",
+            textBody,
+          )}
+        >
           {formatTimelineDayLabel(selectedDate)}
         </span>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 shrink-0 px-2 text-xs font-medium"
+          className="h-7 shrink-0 px-2 font-medium"
           onClick={onGoToday}
         >
           Today

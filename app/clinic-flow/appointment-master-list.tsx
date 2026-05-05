@@ -2,10 +2,12 @@
 
 import { useMemo } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 import type { Appointment, AppointmentStage } from "./types";
+import { MutedTagBadge, toTitleCaseTagLabel } from "./muted-tag-badge";
+import { formatAppointmentStage } from "./stage-display";
 
 import {
   buildAppointmentBlocks,
@@ -19,20 +21,21 @@ import {
 import { ScheduleDateRow } from "./schedule-date-row";
 
 /**
- * CARE MANAGEMENT: "CARE MGMT" when the visit card is narrow; full label from @container width.
- * Other stages: single line, ellipsis if needed.
+ * Care Management: abbreviated when the visit card is narrow; full title-case label when wider.
  */
 function StageBadgeLabel({ stage }: { stage: AppointmentStage }) {
   if (stage !== "CARE MANAGEMENT") {
-    return <span className="block truncate">{stage}</span>;
+    return (
+      <span className="block truncate">{formatAppointmentStage(stage)}</span>
+    );
   }
   return (
     <>
       <span className="block truncate @min-[11rem]/visit:hidden">
-        CARE MGMT
+        Care Mgmt
       </span>
       <span className="hidden truncate @min-[11rem]/visit:inline">
-        CARE MANAGEMENT
+        {formatAppointmentStage(stage)}
       </span>
     </>
   );
@@ -203,10 +206,20 @@ export function AppointmentMasterList({
                         aria-hidden
                       />
                     ) : null}
-                    <span className="line-clamp-1 wrap-break-word pl-1 text-sm font-medium leading-snug text-foreground">
+                    <span
+                      className={cn(
+                        "line-clamp-1 wrap-break-word pl-1 font-medium",
+                        textBody,
+                      )}
+                    >
                       {block.appointment.patientName}
                     </span>
-                    <span className="line-clamp-2 wrap-break-word pl-1 text-xs leading-snug text-muted-foreground">
+                    <span
+                      className={cn(
+                        "line-clamp-2 wrap-break-word pl-1",
+                        textMeta,
+                      )}
+                    >
                       {block.appointment.reason}
                     </span>
                     <div
@@ -216,20 +229,20 @@ export function AppointmentMasterList({
                         "@min-[10.5rem]/visit:flex-row @min-[10.5rem]/visit:flex-wrap @min-[10.5rem]/visit:items-start",
                       )}
                     >
-                      <Badge
-                        variant="outline"
-                        className="h-5 min-h-5 w-fit shrink-0 self-start justify-center overflow-hidden px-2.5 py-0 text-[10px] font-semibold uppercase leading-none tracking-wide tabular-nums whitespace-nowrap"
+                      <MutedTagBadge
+                        surface="onMutedParent"
+                        className="max-w-full self-start tabular-nums"
                       >
-                        <span className=" truncate">
-                          {block.appointment.room}
+                        <span className="block truncate">
+                          {toTitleCaseTagLabel(block.appointment.room)}
                         </span>
-                      </Badge>
-                      <Badge
-                        variant="secondary"
-                        className="h-5 min-h-5 w-fit shrink-0 self-start justify-center overflow-hidden px-2.5 py-0 text-[10px] font-semibold uppercase leading-none tracking-wide tabular-nums whitespace-nowrap"
+                      </MutedTagBadge>
+                      <MutedTagBadge
+                        surface="onMutedParent"
+                        className="max-w-full self-start"
                       >
                         <StageBadgeLabel stage={block.appointment.stage} />
-                      </Badge>
+                      </MutedTagBadge>
                     </div>
                   </button>
                 );

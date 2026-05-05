@@ -1,6 +1,7 @@
 "use client";
 
-import { BellRing, MessageSquare } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { BellRing, MessageSquare, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,19 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 import type { Appointment, AppointmentStage } from "./types";
-
-const WORKSPACE_STAGE_OPTIONS: { value: AppointmentStage; label: string }[] = [
-  { value: "PREVISIT", label: "Previsit" },
-  { value: "INTAKE", label: "Intake" },
-  { value: "ROOMING", label: "Rooming" },
-  { value: "VISIT", label: "Visit" },
-  { value: "LABS", label: "Labs" },
-  { value: "CARE MANAGEMENT", label: "Care Management" },
-  { value: "WRAP UP", label: "Wrap Up" },
-];
+import {
+  APPOINTMENT_STAGE_ORDER,
+  formatAppointmentStage,
+} from "./stage-display";
 
 const WORKSPACE_ROOM_OPTIONS = [
   "RM 1",
@@ -45,10 +41,23 @@ export function WorkspacePinnedHeader({
   onRoomChange: (room: string) => void;
   className?: string;
 }) {
+  const [patientActionToast, setPatientActionToast] = useState<string | null>(
+    null,
+  );
+  const showPatientActionToast = useCallback((message: string) => {
+    setPatientActionToast(message);
+  }, []);
+
+  useEffect(() => {
+    if (!patientActionToast) return;
+    const t = window.setTimeout(() => setPatientActionToast(null), 2800);
+    return () => window.clearTimeout(t);
+  }, [patientActionToast]);
+
   return (
     <header
       className={cn(
-        "m-0 w-full min-w-full border-b border-border/60 bg-background",
+        "sticky top-0 z-10 m-0 w-full min-w-full border-b border-border/60 bg-background",
         className,
       )}
     >
@@ -58,16 +67,48 @@ export function WorkspacePinnedHeader({
           <div className="table-cell min-w-0 max-w-full align-top">
             <div className="flex w-full min-w-0 flex-col gap-2 md:gap-3">
               <div className="min-w-0 w-full">
-                <h2 className="truncate text-xl font-bold tracking-tight text-foreground md:text-2xl">
-                  {appointment.patientName}
-                </h2>
-                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                <div className="flex min-w-0 w-full items-center justify-start gap-2">
+                  <h2 className="min-w-0 shrink truncate text-xl font-bold tracking-tight text-foreground md:text-2xl">
+                    {appointment.patientName}
+                  </h2>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 shrink-0 bg-transparent hover:bg-muted"
+                      aria-label={`Call patient ${appointment.patientName}`}
+                      onClick={() =>
+                        showPatientActionToast(
+                          `Calling ${appointment.patientName} (demo).`,
+                        )
+                      }
+                    >
+                      <Phone className="size-4" aria-hidden />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 shrink-0 bg-transparent hover:bg-muted"
+                      aria-label={`Message patient ${appointment.patientName}`}
+                      onClick={() =>
+                        showPatientActionToast(
+                          `Message to ${appointment.patientName} (demo).`,
+                        )
+                      }
+                    >
+                      <MessageSquare className="size-4" aria-hidden />
+                    </Button>
+                  </div>
+                </div>
+                <p className={cn("mt-1 line-clamp-1", textMeta)}>
                   PCP: {appointment.pcp}
                   <span className="px-1 text-muted-foreground/70">|</span>
                   Navigator: {appointment.navigator}
                 </p>
                 <div className="mt-1.5 block w-full min-w-0 md:mt-2">
-                  <p className="truncate text-sm leading-snug text-foreground">
+                  <p className={cn("truncate", textBody)}>
                     <span className="font-medium text-muted-foreground">
                       Reason for Visit:{" "}
                     </span>
@@ -90,9 +131,9 @@ export function WorkspacePinnedHeader({
                         <SelectValue placeholder="Stage" />
                       </SelectTrigger>
                       <SelectContent className="z-1000">
-                        {WORKSPACE_STAGE_OPTIONS.map(({ value, label }) => (
+                        {APPOINTMENT_STAGE_ORDER.map((value) => (
                           <SelectItem key={value} value={value}>
-                            {label}
+                            {formatAppointmentStage(value)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -141,6 +182,19 @@ export function WorkspacePinnedHeader({
           </div>
         </div>
       </div>
+
+      {patientActionToast ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className={cn(
+            "fixed bottom-6 left-1/2 z-200 max-w-[min(90vw,20rem)] -translate-x-1/2 rounded-lg border border-border bg-background px-4 py-2 text-center shadow-lg",
+            textBody,
+          )}
+        >
+          {patientActionToast}
+        </div>
+      ) : null}
     </header>
   );
 }

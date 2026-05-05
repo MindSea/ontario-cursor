@@ -2,16 +2,19 @@
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { textBody, textMeta } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 import type { Appointment } from "./types";
 
 import { AppointmentMasterList } from "./appointment-master-list";
 import { ScheduleDateRow } from "./schedule-date-row";
+import { IntakeSection } from "./intake-section";
 import { PrevisitSection } from "./previsit-section";
 import { WorkspaceHuddleCard } from "./workspace-huddle-card";
 import { WorkspacePinnedHeader } from "./workspace-pinned-header";
 
-/** Mobile schedule + workspace tab panels: shared flex scroll contract (keep in sync). */
+/** Mobile schedule + workspace tab panels: scroll inside each tab; chrome sits in-flow above (no spacer). */
 const MOBILE_TAB_PANEL_SCROLL_CLASS =
   "flex h-full min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto p-0 outline-none focus-visible:ring-0 data-[state=inactive]:hidden";
 
@@ -53,7 +56,7 @@ export function ClinicFlowMobile({
         onValueChange={(v) => onMobileTabChange(parseMobileTab(v))}
         className="flex h-full min-h-0 w-full min-w-full flex-1 flex-col overflow-x-hidden p-0"
       >
-        <div className="fixed inset-x-0 top-0 z-100 flex w-full min-w-full flex-col bg-background p-0 md:hidden">
+        <div className="relative z-100 flex w-full min-w-full shrink-0 flex-col bg-background p-0 md:hidden">
           <div className="flex h-12 w-full shrink-0 items-center gap-2 border-b border-border/60 bg-background px-4">
             <SidebarTrigger />
           </div>
@@ -63,13 +66,19 @@ export function ClinicFlowMobile({
           >
             <TabsTrigger
               value="schedule"
-              className="min-w-0 w-full overflow-hidden text-center text-sm font-medium"
+              className={cn(
+                "min-w-0 w-full overflow-hidden text-center font-medium",
+                textBody,
+              )}
             >
               Schedule
             </TabsTrigger>
             <TabsTrigger
               value="workspace"
-              className="min-w-0 w-full overflow-hidden text-center text-sm font-medium"
+              className={cn(
+                "min-w-0 w-full overflow-hidden text-center font-medium",
+                textBody,
+              )}
             >
               Workspace
             </TabsTrigger>
@@ -99,13 +108,8 @@ export function ClinicFlowMobile({
           ) : null}
         </div>
 
-        <div className="flex h-full min-h-0 w-full min-w-full flex-1 flex-col overflow-x-hidden overscroll-contain p-0">
+        <div className="flex min-h-0 w-full min-w-full flex-1 flex-col overflow-x-hidden overscroll-contain p-0">
           <TabsContent value="schedule" className={MOBILE_TAB_PANEL_SCROLL_CLASS}>
-            {/* Offset for fixed nav + tabs + date row (must match sticky stack height). */}
-            <div
-              className="block h-[144px] w-full shrink-0"
-              aria-hidden="true"
-            />
             <AppointmentMasterList
               appointments={appointmentsForGrid}
               selectedId={selectedId}
@@ -118,7 +122,7 @@ export function ClinicFlowMobile({
               onGoToday={onGoToday}
               fullBleed
               hideDateRow
-              className="w-full"
+              className="min-h-0 w-full flex-1"
             />
           </TabsContent>
           <TabsContent
@@ -128,13 +132,8 @@ export function ClinicFlowMobile({
           >
             {selectedAppointment ? (
               <>
-                {/* Offset for fixed nav + tabs + patient header. */}
-                <div
-                  className="block h-[300px] w-full shrink-0"
-                  aria-hidden="true"
-                />
-                {/* Side gutters + bottom margin above browser chrome. */}
-                <div className="mb-32 block w-full space-y-4 px-4">
+                {/* Side gutters, air below sticky patient header, bottom margin above browser chrome. */}
+                <div className="mb-32 flex w-full flex-col gap-4 px-4 pt-4">
                   <WorkspaceHuddleCard
                     key={selectedAppointment.id}
                     appointment={selectedAppointment}
@@ -142,6 +141,11 @@ export function ClinicFlowMobile({
                   />
                   <PrevisitSection
                     key={`${selectedAppointment.id}-previsit`}
+                    appointment={selectedAppointment}
+                    layout="mobile"
+                  />
+                  <IntakeSection
+                    key={`${selectedAppointment.id}-intake`}
                     appointment={selectedAppointment}
                     layout="mobile"
                   />
@@ -153,7 +157,7 @@ export function ClinicFlowMobile({
                 />
               </>
             ) : (
-              <p className="px-4 pb-8 text-sm text-muted-foreground">
+              <p className={cn("px-4 pb-8", textMeta)}>
                 No appointment selected.
               </p>
             )}

@@ -51,7 +51,7 @@ export default function ClinicFlowPage() {
   };
 
   return (
-    <div className="w-full bg-background font-sans text-foreground max-md:block max-md:min-h-dvh max-md:w-full max-md:overflow-x-hidden md:flex md:h-full md:min-h-0 md:flex-1 md:flex-col">
+    <div className="w-full bg-background font-sans text-foreground max-md:block max-md:min-h-dvh max-md:w-full max-md:overflow-x-hidden md:flex md:h-full md:min-h-0 md:flex-1 md:flex-col md:overflow-hidden">
       <ClinicFlowMobile
         mobileTab={mobileTab}
         onMobileTabChange={setMobileTab}

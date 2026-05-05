@@ -1,15 +1,56 @@
 import { format } from "date-fns";
 
+import { intakeBundleProgressFromMissing } from "./intake-form-catalog";
 import type { Appointment } from "./types";
 
 export function buildSeedAppointments(): Appointment[] {
   const today = format(new Date(), "yyyy-MM-dd");
+
+  const missingSarah = [
+    "Authorization and Consent for treatment",
+    "Communication form",
+  ] as const;
+  const missingRobert = [
+    "Authorization and Consent for treatment",
+    "Communication form",
+    "ROI form",
+    "TAPS",
+    "VES-13",
+  ] as const;
+  const missingElena = ["PHQ 2/9", "GAD 2/7"] as const;
+  const missingJames = [] as const;
+  const missingMaria = [
+    "Authorization and Consent for treatment",
+    "Communication form",
+    "ROI form",
+    "TAPS",
+  ] as const;
+  const missingSamuel = [
+    "Authorization and Consent for treatment",
+    "Communication form",
+    "PHQ 2/9",
+    "GAD 2/7",
+    "AAFP Social Needs",
+    "VES-13",
+  ] as const;
+  const missingLinda = [] as const;
+  const missingDavid = [
+    "Authorization and Consent for treatment",
+    "ROI form",
+    "PHQ 2/9",
+    "GAD 2/7",
+    "AAFP Social Needs",
+    "TAPS",
+    "VES-13",
+  ] as const;
+
   return [
     {
       id: "1",
       date: today,
       time: "08:00 AM",
       patientName: "Sarah Jenkins",
+      dateOfBirth: "1948-03-12",
       room: "RM 1",
       stage: "PREVISIT",
       reason: "Post-Hospital Follow-up (CHF Exacerbation)",
@@ -17,14 +58,59 @@ export function buildSeedAppointments(): Appointment[] {
       estimatedDurationMins: 60,
       pcp: "Dr. Ellis",
       navigator: "Anna",
-      formCompletionStatus: "In Progress",
-      missingFormNames: [
-        "Medical History",
-        "Consent To Treat",
-        "Insurance Card Photo",
+      missingFormNames: missingSarah,
+      ...intakeBundleProgressFromMissing(missingSarah),
+      intakeFormResults: [
+        {
+          id: "1-r1",
+          formLabel: "PHQ 2/9",
+          resultSummary: "18 (Severe)",
+          navigatorAction: 'Positive for "Thoughts of self-harm"',
+          shortFlag: "PHQ-9: 18",
+          severity: "high",
+        },
+        {
+          id: "1-r2",
+          formLabel: "GAD 2/7",
+          resultSummary: "12 (Moderate)",
+          navigatorAction: "High anxiety regarding health",
+          shortFlag: "GAD-7: 12",
+          severity: "medium",
+        },
+        {
+          id: "1-r3",
+          formLabel: "AAFP Social Needs",
+          resultSummary: "Food Insecurity",
+          navigatorAction: 'Patient "often" worried about groceries',
+          shortFlag: "Food: High Risk",
+          severity: "high",
+        },
+        {
+          id: "1-r4",
+          formLabel: "VES-13",
+          resultSummary: "Score: 5",
+          navigatorAction: "Needs assistance with bathing & housework",
+          shortFlag: "VES-13: 5",
+          severity: "medium",
+        },
+        {
+          id: "1-r5",
+          formLabel: "TAPS",
+          resultSummary: "Tobacco (Daily)",
+          navigatorAction: "Patient interested in quitting",
+          shortFlag: "TAPS: Tobacco",
+          severity: "low",
+        },
+        {
+          id: "1-r6",
+          formLabel: "ROI form",
+          resultSummary: "Needs Update",
+          navigatorAction:
+            'Current ROI for "Sarah Jenkins" expired 04/2026',
+          shortFlag: "ROI: Expired",
+          severity: "medium",
+        },
       ],
-      formsCompleteCount: 2,
-      formsTotalCount: 4,
       huddleTasks: [
         {
           id: "1-h1",
@@ -39,6 +125,7 @@ export function buildSeedAppointments(): Appointment[] {
       date: today,
       time: "08:15 AM",
       patientName: "Robert Chen",
+      dateOfBirth: "1959-10-02",
       room: "RM 3",
       stage: "INTAKE",
       reason: "Follow-up (Diabetes)",
@@ -46,15 +133,34 @@ export function buildSeedAppointments(): Appointment[] {
       estimatedDurationMins: 20,
       pcp: "Dr. Aris",
       navigator: "Anna",
-      formCompletionStatus: "Not Started",
-      missingFormNames: [
-        "Medical History",
-        "Consent To Treat",
-        "Insurance Card Photo",
-        "ROS",
+      missingFormNames: missingRobert,
+      ...intakeBundleProgressFromMissing(missingRobert),
+      intakeFormResults: [
+        {
+          id: "2-r1",
+          formLabel: "PHQ 2/9",
+          resultSummary: "12 (Moderate)",
+          navigatorAction: "Re-screen at next visit; no self-harm endorsement",
+          shortFlag: "PHQ-9: 12",
+          severity: "medium",
+        },
+        {
+          id: "2-r2",
+          formLabel: "GAD 2/7",
+          resultSummary: "10 (Moderate)",
+          navigatorAction: "Reports worry about glucose control and work stress",
+          shortFlag: "GAD-7: 10",
+          severity: "medium",
+        },
+        {
+          id: "2-r3",
+          formLabel: "AAFP Social Needs",
+          resultSummary: "Food Insecurity",
+          navigatorAction: "Skipped meals 2+ days in past month (self-report)",
+          shortFlag: "Food: High Risk",
+          severity: "high",
+        },
       ],
-      formsCompleteCount: 0,
-      formsTotalCount: 4,
       huddleTasks: [
         {
           id: "2-h1",
@@ -69,6 +175,7 @@ export function buildSeedAppointments(): Appointment[] {
       date: today,
       time: "08:45 AM",
       patientName: "Elena Rodriguez",
+      dateOfBirth: "1971-06-21",
       room: "WAIT",
       stage: "ROOMING",
       reason: "Acute: Cough",
@@ -76,10 +183,9 @@ export function buildSeedAppointments(): Appointment[] {
       estimatedDurationMins: 30,
       pcp: "Dr. Aris",
       navigator: "Anna",
-      formCompletionStatus: "In Progress",
-      missingFormNames: ["Consent To Treat", "Pharmacy Profile"],
-      formsCompleteCount: 2,
-      formsTotalCount: 4,
+      missingFormNames: missingElena,
+      ...intakeBundleProgressFromMissing(missingElena),
+      intakeFormResults: [],
       huddleTasks: [
         { id: "3-h1", text: "Check pulse ox on room air", completed: false },
         { id: "3-h2", text: "Verify home oxygen supply", completed: false },
@@ -90,6 +196,7 @@ export function buildSeedAppointments(): Appointment[] {
       date: today,
       time: "09:30 AM",
       patientName: "James Wilson",
+      dateOfBirth: "1964-01-08",
       room: "RM 2",
       stage: "VISIT",
       reason: "HTN Management",
@@ -97,10 +204,26 @@ export function buildSeedAppointments(): Appointment[] {
       estimatedDurationMins: 30,
       pcp: "Dr. Aris",
       navigator: "Anna",
-      formCompletionStatus: "Completed",
-      missingFormNames: [],
-      formsCompleteCount: 4,
-      formsTotalCount: 4,
+      missingFormNames: missingJames,
+      ...intakeBundleProgressFromMissing(missingJames),
+      intakeFormResults: [
+        {
+          id: "4-r1",
+          formLabel: "PHQ 2/9",
+          resultSummary: "Negative screen",
+          navigatorAction: "No PHQ-2 positive; PHQ-9 not triggered",
+          shortFlag: "PHQ-2/9: Neg",
+          severity: "low",
+        },
+        {
+          id: "4-r2",
+          formLabel: "GAD 2/7",
+          resultSummary: "Negative screen",
+          navigatorAction: "No GAD-2 positive; GAD-7 not triggered",
+          shortFlag: "GAD-2/7: Neg",
+          severity: "low",
+        },
+      ],
       huddleTasks: [
         { id: "4-h1", text: "Update BP medication list", completed: false },
         { id: "4-h2", text: "Schedule 3-month follow-up", completed: false },
@@ -111,6 +234,7 @@ export function buildSeedAppointments(): Appointment[] {
       date: today,
       time: "10:00 AM",
       patientName: "Maria Garcia",
+      dateOfBirth: "1942-11-30",
       room: "RM 4",
       stage: "LABS",
       reason: "New Patient Intake",
@@ -118,15 +242,42 @@ export function buildSeedAppointments(): Appointment[] {
       estimatedDurationMins: 60,
       pcp: "Dr. Aris",
       navigator: "Anna",
-      formCompletionStatus: "Not Started",
-      missingFormNames: [
-        "Medical History",
-        "Consent To Treat",
-        "Insurance Card Photo",
-        "Demographics",
+      missingFormNames: missingMaria,
+      ...intakeBundleProgressFromMissing(missingMaria),
+      intakeFormResults: [
+        {
+          id: "5-r1",
+          formLabel: "PHQ 2/9",
+          resultSummary: "16 (Moderately Severe)",
+          navigatorAction: "Discuss safety plan; behavioral health referral",
+          shortFlag: "PHQ-9: 16",
+          severity: "high",
+        },
+        {
+          id: "5-r2",
+          formLabel: "GAD 2/7",
+          resultSummary: "11 (Moderate)",
+          navigatorAction: "Anxiety focused on new diagnosis and finances",
+          shortFlag: "GAD-7: 11",
+          severity: "medium",
+        },
+        {
+          id: "5-r3",
+          formLabel: "VES-13",
+          resultSummary: "Score: 6",
+          navigatorAction: "Vulnerability score suggests care coordination",
+          shortFlag: "VES-13: 6",
+          severity: "medium",
+        },
+        {
+          id: "5-r4",
+          formLabel: "AAFP Social Needs",
+          resultSummary: "Transportation barrier",
+          navigatorAction: "Missed last appointment due to ride access",
+          shortFlag: "Transport: Risk",
+          severity: "medium",
+        },
       ],
-      formsCompleteCount: 0,
-      formsTotalCount: 4,
       huddleTasks: [
         {
           id: "5-h1",
@@ -141,6 +292,7 @@ export function buildSeedAppointments(): Appointment[] {
       date: today,
       time: "10:15 AM",
       patientName: "Samuel Lee",
+      dateOfBirth: "1952-07-04",
       room: "LAB 1",
       stage: "CARE MANAGEMENT",
       reason: "Blood Work",
@@ -148,10 +300,27 @@ export function buildSeedAppointments(): Appointment[] {
       estimatedDurationMins: 15,
       pcp: "Dr. Aris",
       navigator: "Anna",
-      formCompletionStatus: "In Progress",
-      missingFormNames: ["Insurance Card Photo"],
-      formsCompleteCount: 3,
-      formsTotalCount: 4,
+      missingFormNames: missingSamuel,
+      ...intakeBundleProgressFromMissing(missingSamuel),
+      intakeFormResults: [
+        {
+          id: "6-r1",
+          formLabel: "TAPS",
+          resultSummary: "Tobacco (Daily)",
+          navigatorAction: "Willing to set a quit date this month",
+          shortFlag: "TAPS: Tobacco",
+          severity: "low",
+        },
+        {
+          id: "6-r2",
+          formLabel: "ROI form",
+          resultSummary: "Needs Update",
+          navigatorAction:
+            'Current ROI for "Samuel Lee" expired 02/2026',
+          shortFlag: "ROI: Expired",
+          severity: "medium",
+        },
+      ],
       huddleTasks: [
         { id: "6-h1", text: "Lab prep: Fasting check", completed: false },
         {
@@ -166,6 +335,7 @@ export function buildSeedAppointments(): Appointment[] {
       date: today,
       time: "11:00 AM",
       patientName: "Linda Wu",
+      dateOfBirth: "1960-09-16",
       room: "WAIT",
       stage: "WRAP UP",
       reason: "Post-Op Check",
@@ -173,10 +343,9 @@ export function buildSeedAppointments(): Appointment[] {
       estimatedDurationMins: 45,
       pcp: "Dr. Aris",
       navigator: "Anna",
-      formCompletionStatus: "Completed",
-      missingFormNames: [],
-      formsCompleteCount: 4,
-      formsTotalCount: 4,
+      missingFormNames: missingLinda,
+      ...intakeBundleProgressFromMissing(missingLinda),
+      intakeFormResults: [],
       huddleTasks: [
         { id: "7-h1", text: "Post-Op: Check incision site", completed: false },
         { id: "7-h2", text: "Remove sutures", completed: false },
@@ -187,6 +356,7 @@ export function buildSeedAppointments(): Appointment[] {
       date: today,
       time: "11:30 AM",
       patientName: "David Miller",
+      dateOfBirth: "1988-05-05",
       room: "RM 5",
       stage: "VISIT",
       reason: "Immunizations",
@@ -194,10 +364,19 @@ export function buildSeedAppointments(): Appointment[] {
       estimatedDurationMins: 30,
       pcp: "Dr. Aris",
       navigator: "Anna",
-      formCompletionStatus: "In Progress",
-      missingFormNames: ["Vaccine History", "Guardian Consent"],
-      formsCompleteCount: 2,
-      formsTotalCount: 4,
+      missingFormNames: missingDavid,
+      ...intakeBundleProgressFromMissing(missingDavid),
+      intakeFormResults: [
+        {
+          id: "8-r1",
+          formLabel: "Communication form",
+          resultSummary: "Vaccine allergy noted",
+          navigatorAction:
+            "Prior reaction documented; hold immunizations pending review",
+          shortFlag: "Comm: Allergy",
+          severity: "high",
+        },
+      ],
       huddleTasks: [
         {
           id: "8-h1",

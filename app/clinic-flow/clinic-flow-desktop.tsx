@@ -1,11 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 import type { Appointment } from "./types";
 
 import { AppointmentMasterList } from "./appointment-master-list";
+import { IntakeSection } from "./intake-section";
 import { PrevisitSection } from "./previsit-section";
 import { WorkspaceHuddleCard } from "./workspace-huddle-card";
 import { WorkspacePinnedHeader } from "./workspace-pinned-header";
@@ -36,8 +38,8 @@ export function ClinicFlowDesktop({
   onUpdateAppointment,
 }: ClinicFlowDesktopProps) {
   return (
-    <div className="hidden min-h-0 flex-1 flex-col md:flex">
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/50 px-4 py-2">
+    <div className="hidden min-h-0 flex-1 flex-col overflow-hidden md:flex">
+      <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 border-b border-border/50 bg-background px-4 py-2">
         <h1 className="text-lg font-semibold tracking-tight">Clinic Flow</h1>
         <Button
           type="button"
@@ -61,7 +63,7 @@ export function ClinicFlowDesktop({
           )}
           aria-hidden={!isSidebarVisible}
         >
-          <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
             <AppointmentMasterList
               appointments={appointmentsForGrid}
               selectedId={selectedId}
@@ -83,7 +85,7 @@ export function ClinicFlowDesktop({
           )}
         >
           {selectedAppointment ? (
-            <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
               <WorkspacePinnedHeader
                 appointment={selectedAppointment}
                 onStageChange={(stage) =>
@@ -100,7 +102,7 @@ export function ClinicFlowDesktop({
               >
                 <div className="h-[280px] md:hidden" aria-hidden />
                 <div className="hidden h-6 md:block" aria-hidden />
-                <div className="hidden md:block space-y-6">
+                <div className="hidden md:flex md:flex-col md:gap-6">
                   <WorkspaceHuddleCard
                     key={selectedAppointment.id}
                     appointment={selectedAppointment}
@@ -111,11 +113,16 @@ export function ClinicFlowDesktop({
                     appointment={selectedAppointment}
                     layout="desktop"
                   />
+                  <IntakeSection
+                    key={`${selectedAppointment.id}-intake`}
+                    appointment={selectedAppointment}
+                    layout="desktop"
+                  />
                 </div>
               </div>
             </div>
           ) : (
-            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-6 text-sm text-muted-foreground">
+            <div className={cn("min-h-0 min-w-0 flex-1 overflow-y-auto p-6", textMeta)}>
               No appointment selected.
             </div>
           )}
