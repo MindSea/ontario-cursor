@@ -1,7 +1,23 @@
 import { format } from "date-fns";
 
 import { intakeBundleProgressFromMissing } from "./intake-form-catalog";
-import type { Appointment } from "./types";
+import type { Appointment, RoomingSeed, VisitSeed } from "./types";
+
+function rooming(seed: RoomingSeed): RoomingSeed {
+  return seed;
+}
+
+function visit(seed: VisitSeed): VisitSeed {
+  return seed;
+}
+
+/**
+ * Visit → “Retrieve supplies”: `supplyReferenceLines` uses PCP order names only,
+ * one per line. Canonical set: CBC, A1C (Lab), A1C (Rapid), CMP, BMP, Lipid Panel,
+ * TSH, Vitamin D, B12, PT/INR (Lab), PT/INR (Fingerstick), PSA, Lactic Acid,
+ * Blood Glucose, Rapid Strep A, Rapid Flu, Rapid COVID, Urinalysis (UA),
+ * Urine Culture, FIT Test (Colorectal), Retinal Scan.
+ */
 
 export function buildSeedAppointments(): Appointment[] {
   const today = format(new Date(), "yyyy-MM-dd");
@@ -119,6 +135,32 @@ export function buildSeedAppointments(): Appointment[] {
         },
         { id: "1-h2", text: "Perform EKG (Recent ER visit)", completed: false },
       ],
+      rooming: rooming({
+        registration: {
+          insurance: "Medicare with supplemental (Humana)",
+          pharmacy: "Main Street Pharmacy",
+          emergencyContact: "Mary Jenkins (daughter)",
+          paymentSource: "Medicare",
+        },
+        orderedPoctTests: [
+          { id: "1-p1", testType: "HEMOGLOBIN_A1C" },
+          { id: "1-p2", testType: "BLOOD_GLUCOSE" },
+          { id: "1-p3", testType: "PT_INR" },
+          { id: "1-p4", testType: "URINALYSIS_DIP" },
+          { id: "1-p5", testType: "EKG_12_LEAD" },
+        ],
+        medicationsOnFileMultiline:
+          "Furosemide 40 mg tablet — 1 tab daily\nMetoprolol succinate 25 mg ER — 1 tab daily\nLisinopril 10 mg — 1 tab daily\nAtorvastatin 20 mg — 1 tab at bedtime\nAspirin 81 mg chewable — 1 tab daily",
+      }),
+      visit: visit({
+        supplyReferenceLines: [
+          "CBC",
+          "BMP",
+          "PT/INR (Lab)",
+          "A1C (Lab)",
+          "Blood Glucose",
+        ],
+      }),
     },
     {
       id: "2",
@@ -169,6 +211,30 @@ export function buildSeedAppointments(): Appointment[] {
         },
         { id: "2-h2", text: "Check foot exam status", completed: false },
       ],
+      rooming: rooming({
+        registration: {
+          insurance: "Aetna PPO",
+          pharmacy: "CVS Pharmacy",
+          emergencyContact: "",
+          paymentSource: "Commercial (copay waived)",
+        },
+        orderedPoctTests: [
+          { id: "2-p1", testType: "HEMOGLOBIN_A1C" },
+          { id: "2-p2", testType: "MICROALBUMIN" },
+          { id: "2-p3", testType: "BLOOD_GLUCOSE" },
+          { id: "2-p4", testType: "FECAL_OCCULT_FIT" },
+        ],
+        medicationsOnFileMultiline:
+          "Metformin 1000 mg ER — 1 tab BID with meals\nGlimepiride 2 mg — 1 tab daily with breakfast\nSemaglutide 1 mg SQ weekly (Wed)\nLisinopril 20 mg — 1 tab daily\nRosuvastatin 10 mg — 1 tab daily",
+      }),
+      visit: visit({
+        supplyReferenceLines: [
+          "A1C (Rapid)",
+          "Blood Glucose",
+          "Lipid Panel",
+          "Urinalysis (UA)",
+        ],
+      }),
     },
     {
       id: "3",
@@ -190,6 +256,29 @@ export function buildSeedAppointments(): Appointment[] {
         { id: "3-h1", text: "Check pulse ox on room air", completed: false },
         { id: "3-h2", text: "Verify home oxygen supply", completed: false },
       ],
+      rooming: rooming({
+        registration: {
+          insurance: "",
+          pharmacy: "Walgreens",
+          emergencyContact: "Carlos Rodriguez (spouse)",
+          paymentSource: "",
+        },
+        orderedPoctTests: [
+          { id: "3-p1", testType: "STREP_FLU_COV" },
+          { id: "3-p2", testType: "SPIROMETRY" },
+          { id: "3-p3", testType: "BLOOD_GLUCOSE" },
+        ],
+        medicationsOnFileMultiline:
+          "Albuterol HFA 90 mcg — 2 puffs q4h PRN\nFluticasone-salmeterol 250/50 — 1 puff BID\nMontelukast 10 mg — 1 tab nightly",
+      }),
+      visit: visit({
+        supplyReferenceLines: [
+          "Rapid Strep A",
+          "Rapid Flu",
+          "Rapid COVID",
+          "CBC",
+        ],
+      }),
     },
     {
       id: "4",
@@ -228,6 +317,21 @@ export function buildSeedAppointments(): Appointment[] {
         { id: "4-h1", text: "Update BP medication list", completed: false },
         { id: "4-h2", text: "Schedule 3-month follow-up", completed: false },
       ],
+      rooming: rooming({
+        registration: {
+          insurance: "UnitedHealthcare",
+          pharmacy: "",
+          emergencyContact: "James Wilson (self)",
+          paymentSource: "Employer plan",
+        },
+        orderedPoctTests: [
+          { id: "4-p1", testType: "HEMOGLOBIN" },
+          { id: "4-p2", testType: "BLOOD_GLUCOSE" },
+        ],
+        medicationsOnFileMultiline:
+          "Amlodipine 5 mg — 1 tab daily\nHCTZ 12.5 mg — 1 tab daily\nLosartan 50 mg — 1 tab daily",
+      }),
+      visit: visit({ supplyReferenceLines: [] }),
     },
     {
       id: "5",
@@ -286,6 +390,35 @@ export function buildSeedAppointments(): Appointment[] {
         },
         { id: "5-h2", text: "Review vaccine history", completed: false },
       ],
+      rooming: rooming({
+        registration: {
+          insurance: "Medicare and Medicaid",
+          pharmacy: "Community Health Pharmacy",
+          emergencyContact: "Sofia Garcia (daughter)",
+          paymentSource: "Medicaid",
+        },
+        orderedPoctTests: [
+          { id: "5-p1", testType: "RETINAL_SCAN" },
+          { id: "5-p2", testType: "URINALYSIS_DIP" },
+          { id: "5-p3", testType: "HEMOGLOBIN_A1C" },
+          { id: "5-p4", testType: "EAR_LAVAGE" },
+        ],
+        medicationsOnFileMultiline:
+          "Metformin 500 mg — 1 tab TID with meals\nGlyburide 5 mg — 1 tab BID\nOmeprazole 20 mg — 1 tab daily before breakfast\nAspirin 81 mg — 1 tab daily",
+      }),
+      visit: visit({
+        supplyReferenceLines: [
+          "CBC",
+          "CMP",
+          "TSH",
+          "Vitamin D",
+          "B12",
+          "Urinalysis (UA)",
+          "Urine Culture",
+          "FIT Test (Colorectal)",
+          "Retinal Scan",
+        ],
+      }),
     },
     {
       id: "6",
@@ -329,6 +462,28 @@ export function buildSeedAppointments(): Appointment[] {
           completed: false,
         },
       ],
+      rooming: rooming({
+        registration: {
+          insurance: "Blue Cross PPO",
+          pharmacy: "Rite Aid",
+          emergencyContact: "",
+          paymentSource: "",
+        },
+        orderedPoctTests: [
+          { id: "6-p1", testType: "PT_INR" },
+          { id: "6-p2", testType: "BLOOD_GLUCOSE" },
+          { id: "6-p3", testType: "HEMOGLOBIN" },
+        ],
+        medicationsOnFileMultiline:
+          "Warfarin 5 mg — per INR clinic sheet\nAtorvastatin 40 mg — 1 tab nightly",
+      }),
+      visit: visit({
+        supplyReferenceLines: [
+          "CBC",
+          "PT/INR (Fingerstick)",
+          "Lactic Acid",
+        ],
+      }),
     },
     {
       id: "7",
@@ -350,6 +505,23 @@ export function buildSeedAppointments(): Appointment[] {
         { id: "7-h1", text: "Post-Op: Check incision site", completed: false },
         { id: "7-h2", text: "Remove sutures", completed: false },
       ],
+      rooming: rooming({
+        registration: {
+          insurance: "Cigna",
+          pharmacy: "Costco Pharmacy",
+          emergencyContact: "Peter Wu",
+          paymentSource: "Commercial",
+        },
+        orderedPoctTests: [
+          { id: "7-p1", testType: "EKG_12_LEAD" },
+          { id: "7-p2", testType: "URINALYSIS_DIP" },
+        ],
+        medicationsOnFileMultiline:
+          "Ibuprofen 600 mg — 1 tab q6h PRN pain (max 4/day)\nAcetaminophen 500 mg — 2 tabs q6h PRN\nCephalexin 500 mg — 1 cap qid x7 days (post-op course completed)",
+      }),
+      visit: visit({
+        supplyReferenceLines: ["CBC", "PSA", "Urine Culture"],
+      }),
     },
     {
       id: "8",
@@ -385,6 +557,19 @@ export function buildSeedAppointments(): Appointment[] {
         },
         { id: "8-h2", text: "Administer flu shot", completed: false },
       ],
+      rooming: rooming({
+        registration: {
+          insurance: "",
+          pharmacy: "",
+          emergencyContact: "Rachel Miller (parent)",
+          paymentSource: "Self-pay",
+        },
+        orderedPoctTests: [{ id: "8-p1", testType: "STREP_FLU_COV" }],
+        medicationsOnFileMultiline: "",
+      }),
+      visit: visit({
+        supplyReferenceLines: ["Rapid Flu", "Rapid COVID"],
+      }),
     },
   ];
 }

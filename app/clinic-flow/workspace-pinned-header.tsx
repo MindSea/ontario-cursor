@@ -57,12 +57,11 @@ export function WorkspacePinnedHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 z-10 m-0 w-full min-w-full border-b border-border/60 bg-background",
+        "sticky top-0 z-10 m-0 w-full min-w-0 border-b border-border/60 bg-background",
         className,
       )}
     >
-      {/* Padding inside header so border-b spans full viewport width on the outer <header>. */}
-      <div className="px-4 pb-4 pt-4 md:px-6 md:pb-4 md:pt-6">
+      <div className="mx-auto w-full max-w-6xl min-w-0 px-4 pb-4 pt-4 md:px-8 md:pb-4 md:pt-6">
         <div className="table w-full table-fixed border-separate border-spacing-0">
           <div className="table-cell min-w-0 max-w-full align-top">
             <div className="flex w-full min-w-0 flex-col gap-2 md:gap-3">

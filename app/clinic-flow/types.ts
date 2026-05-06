@@ -61,4 +61,52 @@ export type Appointment = {
   /** Screening form results for this visit (seed-only; drives intake flags + results modal). */
   intakeFormResults: readonly IntakeFormResultRow[];
   huddleTasks: HuddleTask[];
+  /** Registration, POCT orders, and meds-on-file for rooming (seed; POCT values entered in UI). */
+  rooming: RoomingSeed;
+  /** Visit workflow checklist; supply lines are read-only hints under row 4 (subset per visit). */
+  visit: VisitSeed;
+};
+
+/** PCP order names for “Retrieve supplies” (one line per order; seed picks a subset). */
+export type VisitSeed = {
+  supplyReferenceLines: readonly string[];
+};
+
+export type RoomingPoctNumericTestType =
+  | "HEMOGLOBIN_A1C"
+  | "BLOOD_GLUCOSE"
+  | "PT_INR"
+  | "MICROALBUMIN"
+  | "HEMOGLOBIN";
+
+export type RoomingPoctDropdownTestType =
+  | "URINALYSIS_DIP"
+  | "STREP_FLU_COV"
+  | "FECAL_OCCULT_FIT"
+  | "EKG_12_LEAD"
+  | "RETINAL_SCAN"
+  | "SPIROMETRY"
+  | "EAR_LAVAGE";
+
+export type RoomingPoctTestType =
+  | RoomingPoctNumericTestType
+  | RoomingPoctDropdownTestType;
+
+export type RoomingOrderedPoctTest = {
+  id: string;
+  testType: RoomingPoctTestType;
+};
+
+export type RoomingRegistrationDetails = {
+  insurance: string;
+  pharmacy: string;
+  emergencyContact: string;
+  paymentSource: string;
+};
+
+export type RoomingSeed = {
+  registration: RoomingRegistrationDetails;
+  orderedPoctTests: readonly RoomingOrderedPoctTest[];
+  /** Multiline plain text; “X meds on file” uses count of non-empty lines. */
+  medicationsOnFileMultiline: string;
 };

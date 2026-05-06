@@ -11,7 +11,9 @@ import { ClinicFlowMobile } from "./clinic-flow-mobile";
 import { buildSeedAppointments } from "./seed-appointments";
 
 export default function ClinicFlowPage() {
-  const [appointments, setAppointments] = useState(buildSeedAppointments);
+  const [appointments, setAppointments] = useState(() =>
+    buildSeedAppointments(),
+  );
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [selectedId, setSelectedId] = useState("1");
   const [mobileTab, setMobileTab] = useState<"schedule" | "workspace">(

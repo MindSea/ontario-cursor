@@ -10,6 +10,8 @@ import type { Appointment } from "./types";
 import { AppointmentMasterList } from "./appointment-master-list";
 import { ScheduleDateRow } from "./schedule-date-row";
 import { IntakeSection } from "./intake-section";
+import { RoomingSection } from "./rooming-section";
+import { VisitSection } from "./visit-section";
 import { PrevisitSection } from "./previsit-section";
 import { WorkspaceHuddleCard } from "./workspace-huddle-card";
 import { WorkspacePinnedHeader } from "./workspace-pinned-header";
@@ -146,6 +148,16 @@ export function ClinicFlowMobile({
                   />
                   <IntakeSection
                     key={`${selectedAppointment.id}-intake`}
+                    appointment={selectedAppointment}
+                    layout="mobile"
+                  />
+                  <RoomingSection
+                    key={`${selectedAppointment.id}-rooming`}
+                    appointment={selectedAppointment}
+                    layout="mobile"
+                  />
+                  <VisitSection
+                    key={`${selectedAppointment.id}-visit`}
                     appointment={selectedAppointment}
                     layout="mobile"
                   />

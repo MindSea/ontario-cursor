@@ -9,6 +9,8 @@ import type { Appointment } from "./types";
 import { AppointmentMasterList } from "./appointment-master-list";
 import { IntakeSection } from "./intake-section";
 import { PrevisitSection } from "./previsit-section";
+import { RoomingSection } from "./rooming-section";
+import { VisitSection } from "./visit-section";
 import { WorkspaceHuddleCard } from "./workspace-huddle-card";
 import { WorkspacePinnedHeader } from "./workspace-pinned-header";
 
@@ -39,18 +41,27 @@ export function ClinicFlowDesktop({
 }: ClinicFlowDesktopProps) {
   return (
     <div className="hidden min-h-0 flex-1 flex-col overflow-hidden md:flex">
-      <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 border-b border-border/50 bg-background px-4 py-2">
-        <h1 className="text-lg font-semibold tracking-tight">Clinic Flow</h1>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="border-border/50"
-          aria-pressed={!isSidebarVisible}
-          onClick={onToggleSidebarVisible}
+      <div className="sticky top-0 z-20 shrink-0 border-b border-border/50 bg-background py-2">
+        <div
+          className={cn(
+            "flex items-center justify-between gap-3",
+            isSidebarVisible
+              ? "w-full px-4"
+              : "mx-auto w-full max-w-6xl min-w-0 px-8",
+          )}
         >
-          {isSidebarVisible ? "Privacy mode" : "Show master list"}
-        </Button>
+          <h1 className="text-lg font-semibold tracking-tight">Clinic Flow</h1>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="border-border/50"
+            aria-pressed={!isSidebarVisible}
+            onClick={onToggleSidebarVisible}
+          >
+            {isSidebarVisible ? "Hide schedule" : "Show schedule"}
+          </Button>
+        </div>
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -97,32 +108,50 @@ export function ClinicFlowDesktop({
                 className="shrink-0"
               />
               <div
-                className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-background px-8 pb-4"
+                className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-background pb-4"
                 aria-label="Workspace"
               >
-                <div className="h-[280px] md:hidden" aria-hidden />
-                <div className="hidden h-6 md:block" aria-hidden />
-                <div className="hidden md:flex md:flex-col md:gap-6">
-                  <WorkspaceHuddleCard
-                    key={selectedAppointment.id}
-                    appointment={selectedAppointment}
-                    layout="desktop"
-                  />
-                  <PrevisitSection
-                    key={`${selectedAppointment.id}-previsit`}
-                    appointment={selectedAppointment}
-                    layout="desktop"
-                  />
-                  <IntakeSection
-                    key={`${selectedAppointment.id}-intake`}
-                    appointment={selectedAppointment}
-                    layout="desktop"
-                  />
+                <div className="mx-auto w-full max-w-6xl min-w-0 px-8">
+                  <div className="h-[280px] md:hidden" aria-hidden />
+                  <div className="hidden h-6 md:block" aria-hidden />
+                  <div className="hidden md:flex md:flex-col md:gap-6">
+                    <WorkspaceHuddleCard
+                      key={selectedAppointment.id}
+                      appointment={selectedAppointment}
+                      layout="desktop"
+                    />
+                    <PrevisitSection
+                      key={`${selectedAppointment.id}-previsit`}
+                      appointment={selectedAppointment}
+                      layout="desktop"
+                    />
+                    <IntakeSection
+                      key={`${selectedAppointment.id}-intake`}
+                      appointment={selectedAppointment}
+                      layout="desktop"
+                    />
+                    <RoomingSection
+                      key={`${selectedAppointment.id}-rooming`}
+                      appointment={selectedAppointment}
+                      layout="desktop"
+                    />
+                    <VisitSection
+                      key={`${selectedAppointment.id}-visit`}
+                      appointment={selectedAppointment}
+                      layout="desktop"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className={cn("min-h-0 min-w-0 flex-1 overflow-y-auto p-6", textMeta)}>
+            <div
+              className={cn(
+                "min-h-0 min-w-0 flex-1 overflow-y-auto p-6",
+                textMeta,
+                !isSidebarVisible && "mx-auto w-full max-w-6xl px-8",
+              )}
+            >
               No appointment selected.
             </div>
           )}

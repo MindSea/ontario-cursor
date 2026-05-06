@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { NotesTextarea } from "@/components/ui/notes-textarea";
 import { textBody, textMeta, textOverline } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -333,11 +334,10 @@ export function PrevisitSection({
             >
               Last attempt: {lastAttemptLabel}
             </p>
-            <Input
+            <NotesTextarea
               value={item1Notes}
               onChange={(e) => setItem1Notes(e.target.value)}
               placeholder="Add confirmation note…"
-              className={inputSm}
               aria-label="Confirmation note"
             />
           </PrevisitRow>
@@ -567,11 +567,10 @@ export function PrevisitSection({
               <span className={PREVISIT_NUM_EMPHASIS}>{medsOnFile}</span> meds on
               file
             </p>
-            <Input
+            <NotesTextarea
               value={medNotes}
               onChange={(e) => setMedNotes(e.target.value)}
               placeholder="Notes on meds/barriers…"
-              className={inputSm}
               aria-label="Medication notes"
             />
           </PrevisitRow>
