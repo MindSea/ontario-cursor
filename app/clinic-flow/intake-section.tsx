@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { textBody, textMeta, textOverline } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
+import { ChecklistLabelActionRow } from "./checklist-label-action-row";
+import { CHECKLIST_META_WHEN_ROW_DONE } from "./checklist-workspace-styles";
 import { MutedTagBadge } from "./muted-tag-badge";
 import type {
   Appointment,
@@ -28,9 +30,6 @@ import type {
 
 /** Interactive checklist rows (checkboxes only). */
 const INTAKE_CHECKBOX_TOTAL = 6;
-
-/** When the row checkbox is checked, secondary lines ease back slightly (title carries “done”). */
-const INTAKE_META_WHEN_ROW_DONE = "opacity-70";
 
 function IntakeRow({
   isFirst,
@@ -128,13 +127,15 @@ export function IntakeSection({
 
   const resultsPanelId = `${baseId}-intake-results-panel`;
 
+  const allFormsComplete = appointment.missingFormNames.length === 0;
+
   const intakeCheckedCount = useMemo(
     () =>
       [
         confirmIdChecked,
         tabletNeededChecked,
         wifiHelpChecked,
-        assistFormsChecked,
+        assistFormsChecked || allFormsComplete,
         resultsReviewedChecked,
         escortedChecked,
       ].filter(Boolean).length,
@@ -145,6 +146,7 @@ export function IntakeSection({
       assistFormsChecked,
       resultsReviewedChecked,
       escortedChecked,
+      allFormsComplete,
     ],
   );
 
@@ -175,6 +177,11 @@ export function IntakeSection({
     return `Missing: ${appointment.missingFormNames.join(", ")}`;
   }, [appointment.missingFormNames]);
 
+  useEffect(() => {
+    if (!allFormsComplete) return;
+    queueMicrotask(() => setAssistFormsChecked(true));
+  }, [allFormsComplete, appointment.id, assistFormsChecked]);
+
   const sortedFormResults = useMemo(
     () => sortFormResults(appointment.intakeFormResults),
     [appointment.intakeFormResults],
@@ -187,11 +194,13 @@ export function IntakeSection({
   const hasIntakeResultRows = sortedFormResults.length > 0;
 
   useEffect(() => {
-    if (!hasIntakeResultRows) setResultsExpanded(false);
+    if (hasIntakeResultRows) return;
+    queueMicrotask(() => setResultsExpanded(false));
   }, [hasIntakeResultRows]);
 
   useEffect(() => {
-    if (intakeCollapsed) setResultsExpanded(false);
+    if (!intakeCollapsed) return;
+    queueMicrotask(() => setResultsExpanded(false));
   }, [intakeCollapsed]);
 
   const tabletInputClass = cn(
@@ -276,7 +285,7 @@ export function IntakeSection({
           >
             Confirm patient name and birthday
           </label>
-          <p className={cn(textMeta, confirmIdChecked && INTAKE_META_WHEN_ROW_DONE)}>
+          <p className={cn(textMeta, confirmIdChecked && CHECKLIST_META_WHEN_ROW_DONE)}>
             {formatDob(appointment.dateOfBirth)}
           </p>
         </IntakeRow>
@@ -334,66 +343,63 @@ export function IntakeSection({
           checkbox={
             <Checkbox
               id={`${baseId}-forms`}
-              checked={assistFormsChecked}
+              checked={assistFormsChecked || allFormsComplete}
               onCheckedChange={(s) => setAssistFormsChecked(s === true)}
             />
           }
         >
-          <div className="relative min-w-0 lg:pr-56">
-            <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-2">
-              <label
-                htmlFor={`${baseId}-forms`}
+          <div className="flex min-w-0 flex-col gap-2">
+            <ChecklistLabelActionRow
+              labelId={`${baseId}-forms`}
+              checked={assistFormsChecked || allFormsComplete}
+              actionsWhenCheckedClassName={CHECKLIST_META_WHEN_ROW_DONE}
+              actions={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  className="shrink-0"
+                  onClick={() => showToast("Form link resent (demo).")}
+                >
+                  Resend link
+                </Button>
+              }
+            >
+              Assist patient with completing forms if needed
+            </ChecklistLabelActionRow>
+            <span
+              className={cn(
+                "flex min-w-0 flex-wrap items-center gap-2",
+                (assistFormsChecked || allFormsComplete) && CHECKLIST_META_WHEN_ROW_DONE,
+              )}
+            >
+              <MutedTagBadge className="max-w-full">
+                {appointment.formCompletionStatus}
+              </MutedTagBadge>
+              <MutedTagBadge className="tabular-nums">
+                {appointment.formsCompleteCount}/{appointment.formsTotalCount} Forms
+              </MutedTagBadge>
+            </span>
+            {missingFormsLine ? (
+              <p
                 className={cn(
-                  "min-w-0 w-fit max-w-full cursor-pointer wrap-break-word select-none",
-                  textBody,
-                  assistFormsChecked && "text-muted-foreground/50 line-through",
+                  textMeta,
+                  (assistFormsChecked || allFormsComplete) && CHECKLIST_META_WHEN_ROW_DONE,
                 )}
               >
-                Assist patient with completing forms if needed
-              </label>
-              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
-                <span
-                  className={cn(
-                    "flex shrink-0 flex-wrap items-center gap-2",
-                    assistFormsChecked && INTAKE_META_WHEN_ROW_DONE,
-                  )}
-                >
-                  <MutedTagBadge className="max-w-full">
-                    {appointment.formCompletionStatus}
-                  </MutedTagBadge>
-                  <MutedTagBadge className="tabular-nums">
-                    {appointment.formsCompleteCount}/{appointment.formsTotalCount} Forms
-                  </MutedTagBadge>
-                </span>
-                <div
-                  className={cn(
-                    "flex min-w-0 flex-wrap items-center justify-start gap-2",
-                    "lg:absolute lg:top-1/2 lg:right-0 lg:-translate-y-1/2 lg:justify-end",
-                    "lg:max-w-[min(22rem,calc(100%-0.5rem))]",
-                  )}
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="xs"
-                    className="shrink-0"
-                    onClick={() => showToast("Form link resent (demo).")}
-                  >
-                    Resend link
-                  </Button>
-                </div>
-              </div>
-            </div>
+                {missingFormsLine}
+              </p>
+            ) : (
+              <p
+                className={cn(
+                  textMeta,
+                  (assistFormsChecked || allFormsComplete) && CHECKLIST_META_WHEN_ROW_DONE,
+                )}
+              >
+                All forms are completed.
+              </p>
+            )}
           </div>
-          {missingFormsLine ? (
-            <p className={cn(textMeta, assistFormsChecked && INTAKE_META_WHEN_ROW_DONE)}>
-              {missingFormsLine}
-            </p>
-          ) : (
-            <p className={cn(textMeta, assistFormsChecked && INTAKE_META_WHEN_ROW_DONE)}>
-              All forms are completed.
-            </p>
-          )}
         </IntakeRow>
 
         <IntakeRow
@@ -405,48 +411,29 @@ export function IntakeSection({
             />
           }
         >
-          <div
-            className={cn(
-              "relative min-w-0",
-              hasIntakeResultRows && "lg:pr-56",
-            )}
-          >
-            <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-2">
-              <label
-                htmlFor={`${baseId}-results`}
-                className={cn(
-                  "min-w-0 w-fit max-w-full cursor-pointer wrap-break-word select-none",
-                  textBody,
-                  resultsReviewedChecked &&
-                    "text-muted-foreground/50 line-through",
-                )}
-              >
-                View form results
-              </label>
-              {hasIntakeResultRows ? (
-                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
-                  <div
-                    className={cn(
-                      "flex min-w-0 flex-wrap items-center justify-start gap-2",
-                      "lg:absolute lg:top-1/2 lg:right-0 lg:-translate-y-1/2 lg:justify-end",
-                      "lg:max-w-[min(22rem,calc(100%-0.5rem))]",
-                    )}
+          <div className="flex min-w-0 flex-col gap-2">
+            <ChecklistLabelActionRow
+              labelId={`${baseId}-results`}
+              checked={resultsReviewedChecked}
+              actionsWhenCheckedClassName={CHECKLIST_META_WHEN_ROW_DONE}
+              actions={
+                hasIntakeResultRows ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    className="shrink-0"
+                    aria-expanded={resultsExpanded}
+                    aria-controls={resultsPanelId}
+                    onClick={() => setResultsExpanded((o) => !o)}
                   >
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      className="shrink-0"
-                      aria-expanded={resultsExpanded}
-                      aria-controls={resultsPanelId}
-                      onClick={() => setResultsExpanded((o) => !o)}
-                    >
-                      {resultsExpanded ? "Less detail" : "More detail"}
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
+                    {resultsExpanded ? "Less detail" : "More detail"}
+                  </Button>
+                ) : undefined
+              }
+            >
+              View form results
+            </ChecklistLabelActionRow>
           </div>
 
           {!resultsExpanded ? (
@@ -454,7 +441,7 @@ export function IntakeSection({
               className={cn(
                 "min-w-0 truncate",
                 textMeta,
-                resultsReviewedChecked && INTAKE_META_WHEN_ROW_DONE,
+                resultsReviewedChecked && CHECKLIST_META_WHEN_ROW_DONE,
               )}
               title={
                 shortFlagSummaryLine ||
@@ -474,7 +461,7 @@ export function IntakeSection({
               aria-label="Intake screening results"
               className={cn(
                 "min-w-0 overflow-hidden rounded-md border border-border/60 bg-muted/15",
-                resultsReviewedChecked && INTAKE_META_WHEN_ROW_DONE,
+                resultsReviewedChecked && CHECKLIST_META_WHEN_ROW_DONE,
               )}
             >
               <div className="max-h-[min(60vh,24rem)] min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain">

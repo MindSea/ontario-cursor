@@ -1,7 +1,30 @@
-import { format } from "date-fns";
+import { addDays, format, subDays } from "date-fns";
 
 import { intakeBundleProgressFromMissing } from "./intake-form-catalog";
-import type { Appointment, RoomingSeed, VisitSeed } from "./types";
+import type {
+  Appointment,
+  AppointmentStage,
+  CareManagementSeed,
+  RoomingSeed,
+  VisitSeed,
+} from "./types";
+
+/** Demo roster: five of each (filters + seed stay aligned). */
+export const CLINIC_FLOW_SEED_PCPS = [
+  "Dr. Ellis",
+  "Dr. Aris",
+  "Dr. Kim",
+  "Dr. Patel",
+  "Dr. Nguyen",
+] as const;
+
+export const CLINIC_FLOW_SEED_NAVIGATORS = [
+  "Anna",
+  "Marcus",
+  "Jordan",
+  "Riley",
+  "Sam",
+] as const;
 
 function rooming(seed: RoomingSeed): RoomingSeed {
   return seed;
@@ -11,16 +34,362 @@ function visit(seed: VisitSeed): VisitSeed {
   return seed;
 }
 
+function careManagement(seed: CareManagementSeed): CareManagementSeed {
+  return seed;
+}
+
+const noMissingForms = [] as const;
+
+function buildExtraAppointments(
+  yesterday: string,
+  today: string,
+  tomorrow: string,
+): Appointment[] {
+  const emptyIntake = () => ({
+    missingFormNames: noMissingForms,
+    ...intakeBundleProgressFromMissing(noMissingForms),
+  });
+  const simpleRooming = () =>
+    rooming({
+      registration: {
+        insurance: "Medicare",
+        pharmacy: "CVS Pharmacy",
+        emergencyContact: "",
+        paymentSource: "Medicare",
+      },
+      orderedPoctTests: [],
+      medicationsOnFileMultiline: "",
+    });
+  const simpleHuddle = (id: string, text: string) => [
+    { id: `${id}-h1`, text, completed: false as const },
+  ];
+
+  const row = (
+    id: string,
+    date: string,
+    time: string,
+    patientName: string,
+    dateOfBirth: string,
+    room: string,
+    stage: AppointmentStage,
+    reason: string,
+    appointmentType: string,
+    estimatedDurationMins: number,
+    pcp: string,
+    navigator: string,
+  ): Appointment => ({
+    id,
+    date,
+    time,
+    patientName,
+    dateOfBirth,
+    room,
+    stage,
+    reason,
+    appointmentType,
+    estimatedDurationMins,
+    pcp,
+    navigator,
+    ...emptyIntake(),
+    intakeFormResults: [],
+    huddleTasks: simpleHuddle(id, `Prep: ${reason}`),
+    rooming: simpleRooming(),
+    visit: visit({ supplyReferenceLines: [] }),
+    careManagement: careManagement({
+      recommendedCadence: "PCP: Follow-up as needed",
+    }),
+  });
+
+  return [
+    row(
+      "12",
+      yesterday,
+      "08:00 AM",
+      "Theo Banks",
+      "1952-02-14",
+      "RM 1",
+      "INTAKE",
+      "Diabetes follow-up",
+      "Established Follow-up",
+      30,
+      "Dr. Patel",
+      "Sam",
+    ),
+    row(
+      "13",
+      yesterday,
+      "09:15 AM",
+      "Grace Okonkwo",
+      "1946-08-30",
+      "RM 3",
+      "VISIT",
+      "CKD review",
+      "Chronic Care Visit",
+      45,
+      "Dr. Nguyen",
+      "Jordan",
+    ),
+    row(
+      "14",
+      yesterday,
+      "11:45 AM",
+      "Victor Ramos",
+      "1939-12-01",
+      "LAB 1",
+      "LABS",
+      "Standing lab draw",
+      "Lab Draw",
+      20,
+      "Dr. Ellis",
+      "Riley",
+    ),
+    row(
+      "15",
+      yesterday,
+      "02:30 PM",
+      "Nina Patel",
+      "1958-05-20",
+      "WAIT",
+      "PREVISIT",
+      "New patient paperwork",
+      "New Patient",
+      45,
+      "Dr. Kim",
+      "Anna",
+    ),
+    row(
+      "16",
+      yesterday,
+      "03:45 PM",
+      "Omar Haddad",
+      "1944-11-11",
+      "RM 4",
+      "COMPLETED",
+      "Nurse visit (completed)",
+      "Nurse Visit",
+      30,
+      "Dr. Aris",
+      "Marcus",
+    ),
+    row(
+      "17",
+      today,
+      "12:45 PM",
+      "Claire Bennett",
+      "1951-07-07",
+      "RM 3",
+      "ROOMING",
+      "URI symptoms",
+      "Acute Sick Visit",
+      30,
+      "Dr. Patel",
+      "Riley",
+    ),
+    row(
+      "18",
+      today,
+      "01:15 PM",
+      "Walter Ng",
+      "1947-03-29",
+      "RM 4",
+      "CARE MANAGEMENT",
+      "Tobacco counseling",
+      "Care Management",
+      40,
+      "Dr. Nguyen",
+      "Sam",
+    ),
+    row(
+      "19",
+      today,
+      "01:45 PM",
+      "Iris McConnell",
+      "1954-10-18",
+      "RM 5",
+      "WRAP UP",
+      "Procedure instructions",
+      "Procedure Follow-up",
+      30,
+      "Dr. Kim",
+      "Jordan",
+    ),
+    row(
+      "20",
+      today,
+      "02:30 PM",
+      "Ben Carter",
+      "1941-01-25",
+      "WAIT",
+      "PREVISIT",
+      "Annual wellness",
+      "Wellness Visit",
+      45,
+      "Dr. Ellis",
+      "Sam",
+    ),
+    row(
+      "21",
+      today,
+      "03:00 PM",
+      "Yuki Tanaka",
+      "1956-06-06",
+      "RM 1",
+      "VISIT",
+      "Hypothyroid check",
+      "Chronic Care Visit",
+      30,
+      "Dr. Patel",
+      "Anna",
+    ),
+    row(
+      "22",
+      today,
+      "03:30 PM",
+      "Renee Foster",
+      "1949-09-09",
+      "LAB 1",
+      "LABS",
+      "Coumadin clinic",
+      "Lab Draw",
+      25,
+      "Dr. Aris",
+      "Riley",
+    ),
+    row(
+      "23",
+      tomorrow,
+      "08:30 AM",
+      "Marcus Webb",
+      "1953-04-04",
+      "RM 2",
+      "INTAKE",
+      "Post-hospital follow-up",
+      "Post-Acute Follow-up",
+      60,
+      "Dr. Nguyen",
+      "Marcus",
+    ),
+    row(
+      "24",
+      tomorrow,
+      "09:00 AM",
+      "Priya Shah",
+      "1959-11-23",
+      "RM 3",
+      "ROOMING",
+      "Back pain",
+      "Acute Sick Visit",
+      30,
+      "Dr. Kim",
+      "Anna",
+    ),
+    row(
+      "25",
+      tomorrow,
+      "10:15 AM",
+      "Louisa Fernandez",
+      "1943-07-17",
+      "RM 4",
+      "VISIT",
+      "CHF clinic",
+      "Chronic Care Visit",
+      45,
+      "Dr. Ellis",
+      "Jordan",
+    ),
+    row(
+      "26",
+      tomorrow,
+      "11:30 AM",
+      "Greg Powell",
+      "1950-12-12",
+      "WAIT",
+      "PREVISIT",
+      "Labs prior to visit",
+      "Lab Draw",
+      20,
+      "Dr. Patel",
+      "Sam",
+    ),
+    row(
+      "27",
+      tomorrow,
+      "12:15 PM",
+      "Hannah Brooks",
+      "1957-08-08",
+      "RM 5",
+      "CARE MANAGEMENT",
+      "SDOH screening",
+      "Care Management",
+      35,
+      "Dr. Nguyen",
+      "Riley",
+    ),
+    row(
+      "28",
+      tomorrow,
+      "01:00 PM",
+      "Derek Stone",
+      "1940-02-02",
+      "RM 1",
+      "WRAP UP",
+      "Discharge teaching",
+      "Post-Acute Follow-up",
+      30,
+      "Dr. Aris",
+      "Sam",
+    ),
+    row(
+      "29",
+      tomorrow,
+      "02:45 PM",
+      "Amelia Cruz",
+      "1955-05-05",
+      "RM 2",
+      "COMPLETED",
+      "Same-day procedure (completed)",
+      "Procedure Follow-up",
+      45,
+      "Dr. Kim",
+      "Anna",
+    ),
+    row(
+      "30",
+      tomorrow,
+      "04:00 PM",
+      "Jonas Meyer",
+      "1948-09-19",
+      "RM 3",
+      "VISIT",
+      "Medicare wellness",
+      "Medicare wellness & vaccines",
+      40,
+      "Dr. Patel",
+      "Jordan",
+    ),
+  ];
+}
+
 /**
  * Visit → “Retrieve supplies”: `supplyReferenceLines` uses PCP order names only,
- * one per line. Canonical set: CBC, A1C (Lab), A1C (Rapid), CMP, BMP, Lipid Panel,
- * TSH, Vitamin D, B12, PT/INR (Lab), PT/INR (Fingerstick), PSA, Lactic Acid,
- * Blood Glucose, Rapid Strep A, Rapid Flu, Rapid COVID, Urinalysis (UA),
- * Urine Culture, FIT Test (Colorectal), Retinal Scan.
+ * one per line (same chips Labs reads). Names and supplies text stay aligned with
+ * `labs-supply-catalog` (Order → Supplies table).
+ *
+ * Canonical orders: CBC, A1C (Lab), CMP, BMP, Lipid Panel, TSH, Vitamin D, B12,
+ * PT / INR (Coagulation), Lactic Acid, Blood Glucose, Rapid A1C, Rapid Glucose,
+ * Rapid Strep A, Rapid Flu, Rapid COVID, PT/INR (Fingerstick), Urinalysis (UA),
+ * Urine Culture, FIT Test (Colorectal), Retinal Scan, PSA.
+ *
+ * Coverage and ages skew toward Medicare-eligible adults for this demo panel.
+ *
+ * Care Management → `careManagement.recommendedCadence`: short per-patient line under
+ * “Schedule next appointment at TSH” (demo variety).
  */
 
 export function buildSeedAppointments(): Appointment[] {
   const today = format(new Date(), "yyyy-MM-dd");
+  const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
+  const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
 
   const missingSarah = [
     "Authorization and Consent for treatment",
@@ -60,7 +429,7 @@ export function buildSeedAppointments(): Appointment[] {
     "VES-13",
   ] as const;
 
-  return [
+  const core: Appointment[] = [
     {
       id: "1",
       date: today,
@@ -156,10 +525,13 @@ export function buildSeedAppointments(): Appointment[] {
         supplyReferenceLines: [
           "CBC",
           "BMP",
-          "PT/INR (Lab)",
+          "PT / INR (Coagulation)",
           "A1C (Lab)",
           "Blood Glucose",
         ],
+      }),
+      careManagement: careManagement({
+        recommendedCadence: "PCP: Follow-up in 2 weeks",
       }),
     },
     {
@@ -167,7 +539,7 @@ export function buildSeedAppointments(): Appointment[] {
       date: today,
       time: "08:15 AM",
       patientName: "Robert Chen",
-      dateOfBirth: "1959-10-02",
+      dateOfBirth: "1945-10-02",
       room: "RM 3",
       stage: "INTAKE",
       reason: "Follow-up (Diabetes)",
@@ -190,7 +562,8 @@ export function buildSeedAppointments(): Appointment[] {
           id: "2-r2",
           formLabel: "GAD 2/7",
           resultSummary: "10 (Moderate)",
-          navigatorAction: "Reports worry about glucose control and work stress",
+          navigatorAction:
+            "Reports worry about glucose control and day-to-day activities",
           shortFlag: "GAD-7: 10",
           severity: "medium",
         },
@@ -213,10 +586,10 @@ export function buildSeedAppointments(): Appointment[] {
       ],
       rooming: rooming({
         registration: {
-          insurance: "Aetna PPO",
+          insurance: "Medicare Advantage",
           pharmacy: "CVS Pharmacy",
           emergencyContact: "",
-          paymentSource: "Commercial (copay waived)",
+          paymentSource: "Medicare",
         },
         orderedPoctTests: [
           { id: "2-p1", testType: "HEMOGLOBIN_A1C" },
@@ -229,11 +602,14 @@ export function buildSeedAppointments(): Appointment[] {
       }),
       visit: visit({
         supplyReferenceLines: [
-          "A1C (Rapid)",
+          "Rapid A1C",
           "Blood Glucose",
           "Lipid Panel",
           "Urinalysis (UA)",
         ],
+      }),
+      careManagement: careManagement({
+        recommendedCadence: "PCP: Follow-up in 3 months",
       }),
     },
     {
@@ -241,14 +617,14 @@ export function buildSeedAppointments(): Appointment[] {
       date: today,
       time: "08:45 AM",
       patientName: "Elena Rodriguez",
-      dateOfBirth: "1971-06-21",
+      dateOfBirth: "1949-06-21",
       room: "WAIT",
       stage: "ROOMING",
       reason: "Acute: Cough",
       appointmentType: "Acute Sick Visit",
       estimatedDurationMins: 30,
-      pcp: "Dr. Aris",
-      navigator: "Anna",
+      pcp: "Dr. Kim",
+      navigator: "Jordan",
       missingFormNames: missingElena,
       ...intakeBundleProgressFromMissing(missingElena),
       intakeFormResults: [],
@@ -258,10 +634,10 @@ export function buildSeedAppointments(): Appointment[] {
       ],
       rooming: rooming({
         registration: {
-          insurance: "",
+          insurance: "Medicare",
           pharmacy: "Walgreens",
           emergencyContact: "Carlos Rodriguez (spouse)",
-          paymentSource: "",
+          paymentSource: "Medicare",
         },
         orderedPoctTests: [
           { id: "3-p1", testType: "STREP_FLU_COV" },
@@ -279,20 +655,23 @@ export function buildSeedAppointments(): Appointment[] {
           "CBC",
         ],
       }),
+      careManagement: careManagement({
+        recommendedCadence: "PCP: Follow-up in 10 days",
+      }),
     },
     {
       id: "4",
       date: today,
       time: "09:30 AM",
       patientName: "James Wilson",
-      dateOfBirth: "1964-01-08",
+      dateOfBirth: "1948-01-08",
       room: "RM 2",
       stage: "VISIT",
       reason: "HTN Management",
       appointmentType: "Chronic Care Visit",
       estimatedDurationMins: 30,
-      pcp: "Dr. Aris",
-      navigator: "Anna",
+      pcp: "Dr. Patel",
+      navigator: "Riley",
       missingFormNames: missingJames,
       ...intakeBundleProgressFromMissing(missingJames),
       intakeFormResults: [
@@ -319,10 +698,10 @@ export function buildSeedAppointments(): Appointment[] {
       ],
       rooming: rooming({
         registration: {
-          insurance: "UnitedHealthcare",
+          insurance: "Medicare with Medigap",
           pharmacy: "",
           emergencyContact: "James Wilson (self)",
-          paymentSource: "Employer plan",
+          paymentSource: "Medicare",
         },
         orderedPoctTests: [
           { id: "4-p1", testType: "HEMOGLOBIN" },
@@ -332,6 +711,9 @@ export function buildSeedAppointments(): Appointment[] {
           "Amlodipine 5 mg — 1 tab daily\nHCTZ 12.5 mg — 1 tab daily\nLosartan 50 mg — 1 tab daily",
       }),
       visit: visit({ supplyReferenceLines: [] }),
+      careManagement: careManagement({
+        recommendedCadence: "PCP: Follow-up in 3 months",
+      }),
     },
     {
       id: "5",
@@ -344,8 +726,8 @@ export function buildSeedAppointments(): Appointment[] {
       reason: "New Patient Intake",
       appointmentType: "New Patient",
       estimatedDurationMins: 60,
-      pcp: "Dr. Aris",
-      navigator: "Anna",
+      pcp: "Dr. Nguyen",
+      navigator: "Sam",
       missingFormNames: missingMaria,
       ...intakeBundleProgressFromMissing(missingMaria),
       intakeFormResults: [
@@ -395,7 +777,7 @@ export function buildSeedAppointments(): Appointment[] {
           insurance: "Medicare and Medicaid",
           pharmacy: "Community Health Pharmacy",
           emergencyContact: "Sofia Garcia (daughter)",
-          paymentSource: "Medicaid",
+          paymentSource: "Medicare (Medicaid secondary)",
         },
         orderedPoctTests: [
           { id: "5-p1", testType: "RETINAL_SCAN" },
@@ -419,20 +801,23 @@ export function buildSeedAppointments(): Appointment[] {
           "Retinal Scan",
         ],
       }),
+      careManagement: careManagement({
+        recommendedCadence: "PCP: Follow-up in 4 weeks",
+      }),
     },
     {
       id: "6",
       date: today,
       time: "10:15 AM",
       patientName: "Samuel Lee",
-      dateOfBirth: "1952-07-04",
+      dateOfBirth: "1940-07-04",
       room: "LAB 1",
       stage: "CARE MANAGEMENT",
       reason: "Blood Work",
       appointmentType: "Lab Draw",
       estimatedDurationMins: 15,
       pcp: "Dr. Aris",
-      navigator: "Anna",
+      navigator: "Marcus",
       missingFormNames: missingSamuel,
       ...intakeBundleProgressFromMissing(missingSamuel),
       intakeFormResults: [
@@ -458,16 +843,16 @@ export function buildSeedAppointments(): Appointment[] {
         { id: "6-h1", text: "Lab prep: Fasting check", completed: false },
         {
           id: "6-h2",
-          text: "Verify insurance for specialty labs",
+          text: "Confirm standing orders for INR and CBC",
           completed: false,
         },
       ],
       rooming: rooming({
         registration: {
-          insurance: "Blue Cross PPO",
+          insurance: "Medicare with supplemental (Anthem)",
           pharmacy: "Rite Aid",
           emergencyContact: "",
-          paymentSource: "",
+          paymentSource: "Medicare",
         },
         orderedPoctTests: [
           { id: "6-p1", testType: "PT_INR" },
@@ -484,19 +869,22 @@ export function buildSeedAppointments(): Appointment[] {
           "Lactic Acid",
         ],
       }),
+      careManagement: careManagement({
+        recommendedCadence: "PCP: Follow-up in 1 week",
+      }),
     },
     {
       id: "7",
       date: today,
       time: "11:00 AM",
       patientName: "Linda Wu",
-      dateOfBirth: "1960-09-16",
+      dateOfBirth: "1955-09-16",
       room: "WAIT",
       stage: "WRAP UP",
       reason: "Post-Op Check",
       appointmentType: "Procedure Follow-up",
       estimatedDurationMins: 45,
-      pcp: "Dr. Aris",
+      pcp: "Dr. Kim",
       navigator: "Anna",
       missingFormNames: missingLinda,
       ...intakeBundleProgressFromMissing(missingLinda),
@@ -507,10 +895,10 @@ export function buildSeedAppointments(): Appointment[] {
       ],
       rooming: rooming({
         registration: {
-          insurance: "Cigna",
+          insurance: "Medicare Advantage (Cigna)",
           pharmacy: "Costco Pharmacy",
           emergencyContact: "Peter Wu",
-          paymentSource: "Commercial",
+          paymentSource: "Medicare",
         },
         orderedPoctTests: [
           { id: "7-p1", testType: "EKG_12_LEAD" },
@@ -522,20 +910,23 @@ export function buildSeedAppointments(): Appointment[] {
       visit: visit({
         supplyReferenceLines: ["CBC", "PSA", "Urine Culture"],
       }),
+      careManagement: careManagement({
+        recommendedCadence: "PCP: Follow-up in 2 weeks",
+      }),
     },
     {
       id: "8",
       date: today,
       time: "11:30 AM",
       patientName: "David Miller",
-      dateOfBirth: "1988-05-05",
+      dateOfBirth: "1940-05-05",
       room: "RM 5",
       stage: "VISIT",
-      reason: "Immunizations",
-      appointmentType: "Nurse Visit",
+      reason: "Seasonal immunizations (flu)",
+      appointmentType: "Medicare wellness & vaccines",
       estimatedDurationMins: 30,
-      pcp: "Dr. Aris",
-      navigator: "Anna",
+      pcp: "Dr. Ellis",
+      navigator: "Marcus",
       missingFormNames: missingDavid,
       ...intakeBundleProgressFromMissing(missingDavid),
       intakeFormResults: [
@@ -552,17 +943,21 @@ export function buildSeedAppointments(): Appointment[] {
       huddleTasks: [
         {
           id: "8-h1",
-          text: "Pediatric: School form signature",
+          text: "Reconcile vaccine due list and allergy flags",
           completed: false,
         },
-        { id: "8-h2", text: "Administer flu shot", completed: false },
+        {
+          id: "8-h2",
+          text: "Administer flu vaccine per standing orders",
+          completed: false,
+        },
       ],
       rooming: rooming({
         registration: {
-          insurance: "",
-          pharmacy: "",
-          emergencyContact: "Rachel Miller (parent)",
-          paymentSource: "Self-pay",
+          insurance: "Medicare",
+          pharmacy: "CVS Pharmacy",
+          emergencyContact: "Rachel Miller (daughter)",
+          paymentSource: "Medicare",
         },
         orderedPoctTests: [{ id: "8-p1", testType: "STREP_FLU_COV" }],
         medicationsOnFileMultiline: "",
@@ -570,6 +965,122 @@ export function buildSeedAppointments(): Appointment[] {
       visit: visit({
         supplyReferenceLines: ["Rapid Flu", "Rapid COVID"],
       }),
+      careManagement: careManagement({
+        recommendedCadence: "PCP: Follow-up in 6 months",
+      }),
+    },
+    {
+      id: "9",
+      date: today,
+      time: "12:30 PM",
+      patientName: "Helen Park",
+      dateOfBirth: "1950-01-11",
+      room: "RM 2",
+      stage: "COMPLETED",
+      reason: "Medication review (completed)",
+      appointmentType: "Chronic Care Visit",
+      estimatedDurationMins: 30,
+      pcp: "Dr. Patel",
+      navigator: "Anna",
+      missingFormNames: missingLinda,
+      ...intakeBundleProgressFromMissing(missingLinda),
+      intakeFormResults: [],
+      huddleTasks: [
+        { id: "9-h1", text: "Discharge paperwork filed", completed: true },
+      ],
+      rooming: rooming({
+        registration: {
+          insurance: "Medicare",
+          pharmacy: "Main Street Pharmacy",
+          emergencyContact: "Chris Park",
+          paymentSource: "Medicare",
+        },
+        orderedPoctTests: [],
+        medicationsOnFileMultiline: "Aspirin 81 mg — 1 tab daily",
+      }),
+      visit: visit({ supplyReferenceLines: ["CBC"] }),
+      careManagement: careManagement({
+        recommendedCadence: "PCP: Follow-up in 3 months",
+      }),
+    },
+    {
+      id: "10",
+      date: tomorrow,
+      time: "02:00 PM",
+      patientName: "Sarah Jenkins",
+      dateOfBirth: "1948-03-12",
+      room: "RM 1",
+      stage: "COMPLETED",
+      reason: "Follow-up labs (booked)",
+      appointmentType: "Post-Acute Follow-up",
+      estimatedDurationMins: 45,
+      pcp: "Dr. Ellis",
+      navigator: "Anna",
+      missingFormNames: missingSarah,
+      ...intakeBundleProgressFromMissing(missingSarah),
+      intakeFormResults: [
+        {
+          id: "10-r1",
+          formLabel: "PHQ 2/9",
+          resultSummary: "8 (Mild)",
+          navigatorAction: "Stable mood at prior visit",
+          shortFlag: "PHQ-9: 8",
+          severity: "low",
+        },
+      ],
+      huddleTasks: [
+        { id: "10-h1", text: "Confirm prior visit A1C trend", completed: false },
+      ],
+      rooming: rooming({
+        registration: {
+          insurance: "Medicare with supplemental (Humana)",
+          pharmacy: "Main Street Pharmacy",
+          emergencyContact: "Mary Jenkins (daughter)",
+          paymentSource: "Medicare",
+        },
+        orderedPoctTests: [{ id: "10-p1", testType: "HEMOGLOBIN_A1C" }],
+        medicationsOnFileMultiline:
+          "Furosemide 40 mg tablet — 1 tab daily\nMetoprolol succinate 25 mg ER — 1 tab daily",
+      }),
+      visit: visit({ supplyReferenceLines: ["A1C (Lab)"] }),
+      careManagement: careManagement({
+        recommendedCadence: "PCP: Follow-up in 2 weeks",
+      }),
+    },
+    {
+      id: "11",
+      date: yesterday,
+      time: "10:30 AM",
+      patientName: "Evelyn Hart",
+      dateOfBirth: "1943-04-22",
+      room: "WAIT",
+      stage: "PREVISIT",
+      reason: "Medicare Annual Wellness",
+      appointmentType: "Wellness Visit",
+      estimatedDurationMins: 45,
+      pcp: "Dr. Nguyen",
+      navigator: "Riley",
+      missingFormNames: missingJames,
+      ...intakeBundleProgressFromMissing(missingJames),
+      intakeFormResults: [],
+      huddleTasks: [
+        { id: "11-h1", text: "Verify insurance card copy", completed: false },
+      ],
+      rooming: rooming({
+        registration: {
+          insurance: "Medicare",
+          pharmacy: "CVS Pharmacy",
+          emergencyContact: "",
+          paymentSource: "Medicare",
+        },
+        orderedPoctTests: [],
+        medicationsOnFileMultiline: "",
+      }),
+      visit: visit({ supplyReferenceLines: [] }),
+      careManagement: careManagement({
+        recommendedCadence: "PCP: Follow-up in 1 year",
+      }),
     },
   ];
+  return [...core, ...buildExtraAppointments(yesterday, today, tomorrow)];
 }

@@ -116,66 +116,62 @@ export function WorkspacePinnedHeader({
                 </div>
               </div>
 
-              <div className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:flex-nowrap md:items-center md:gap-3">
-                <div className="flex min-w-0 w-full flex-row gap-2 md:w-auto md:shrink-0">
-                  <div className="flex-1 md:flex-none md:max-w-[200px]">
-                    <Select
-                      value={appointment.stage}
-                      onValueChange={(v) => onStageChange(v as AppointmentStage)}
+              <div className="flex w-full min-w-0 flex-row flex-wrap items-center gap-x-2 gap-y-2 md:gap-x-3 md:gap-y-2">
+                <div className="min-w-0 w-[min(100%,11rem)] shrink-0 sm:w-44 md:w-auto md:max-w-[200px]">
+                  <Select
+                    value={appointment.stage}
+                    onValueChange={(v) => onStageChange(v as AppointmentStage)}
+                  >
+                    <SelectTrigger
+                      size="sm"
+                      className="h-8 w-full md:max-w-[200px]"
                     >
-                      <SelectTrigger
-                        size="sm"
-                        className="h-8 w-full md:max-w-[200px]"
-                      >
-                        <SelectValue placeholder="Stage" />
-                      </SelectTrigger>
-                      <SelectContent className="z-1000">
-                        {APPOINTMENT_STAGE_ORDER.map((value) => (
-                          <SelectItem key={value} value={value}>
-                            {formatAppointmentStage(value)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex-1 md:flex-none md:max-w-[200px]">
-                    <Select value={appointment.room} onValueChange={onRoomChange}>
-                      <SelectTrigger
-                        size="sm"
-                        className="h-8 w-full md:max-w-[200px]"
-                      >
-                        <SelectValue placeholder="Room" />
-                      </SelectTrigger>
-                      <SelectContent className="z-1000">
-                        {WORKSPACE_ROOM_OPTIONS.map((room) => (
-                          <SelectItem key={room} value={room}>
-                            {room}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      <SelectValue placeholder="Stage" />
+                    </SelectTrigger>
+                    <SelectContent className="z-1000">
+                      {APPOINTMENT_STAGE_ORDER.map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {formatAppointmentStage(value)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="flex w-full min-w-0 flex-row flex-wrap items-center gap-2 md:shrink-0 md:flex-nowrap">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                  >
-                    <MessageSquare className="size-3.5" aria-hidden />
-                    Message PCP
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 border-destructive/50 text-destructive hover:bg-destructive/10"
-                  >
-                    <BellRing className="size-3.5" aria-hidden />
-                    Signal PCP
-                  </Button>
+                <div className="min-w-0 w-[min(100%,6.5rem)] shrink-0 sm:w-28 md:w-auto md:max-w-[200px]">
+                  <Select value={appointment.room} onValueChange={onRoomChange}>
+                    <SelectTrigger
+                      size="sm"
+                      className="h-8 w-full md:max-w-[200px]"
+                    >
+                      <SelectValue placeholder="Room" />
+                    </SelectTrigger>
+                    <SelectContent className="z-1000">
+                      {WORKSPACE_ROOM_OPTIONS.map((room) => (
+                        <SelectItem key={room} value={room}>
+                          {room}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5"
+                >
+                  <MessageSquare className="size-3.5" aria-hidden />
+                  Message PCP
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5 border-destructive/50 text-destructive hover:bg-destructive/10"
+                >
+                  <BellRing className="size-3.5" aria-hidden />
+                  Signal PCP
+                </Button>
               </div>
             </div>
           </div>

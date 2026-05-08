@@ -5,7 +5,8 @@ export type AppointmentStage =
   | "VISIT"
   | "LABS"
   | "CARE MANAGEMENT"
-  | "WRAP UP";
+  | "WRAP UP"
+  | "COMPLETED";
 
 export type IntakeFormResultSeverity = "high" | "medium" | "low";
 
@@ -65,6 +66,14 @@ export type Appointment = {
   rooming: RoomingSeed;
   /** Visit workflow checklist; supply lines are read-only hints under row 4 (subset per visit). */
   visit: VisitSeed;
+  /** Care Management workspace copy (seed); cadence drives the “Schedule next appointment” meta line. */
+  careManagement: CareManagementSeed;
+};
+
+/** Seed-only strings for the Care Management checklist (demo). */
+export type CareManagementSeed = {
+  /** Short line under “Schedule next appointment at TSH” (PCP-recommended cadence). */
+  recommendedCadence: string;
 };
 
 /** PCP order names for “Retrieve supplies” (one line per order; seed picks a subset). */

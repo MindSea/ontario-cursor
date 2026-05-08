@@ -29,7 +29,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header
           className={cn(
             "flex h-12 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-3 max-md:fixed max-md:inset-x-0 max-md:top-0 max-md:z-100 md:sticky md:top-0 md:z-100 md:backdrop-blur-sm",
-            clinicFlowRoute && "max-md:hidden",
+            /* Clinic Flow renders its own trigger + title in-page (mobile + desktop). */
+            clinicFlowRoute && "hidden",
           )}
         >
           <SidebarTrigger />

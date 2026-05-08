@@ -26,14 +26,17 @@ import {
 import { textBody, textMeta, textOverline } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
+import { AmbientListenControls } from "./ambient-listen-controls";
+import {
+  ambientListenStatusLabel,
+  useAmbientListen,
+} from "./ambient-listen-context";
+import { ChecklistLabelActionRow } from "./checklist-label-action-row";
+import { CHECKLIST_META_WHEN_ROW_DONE } from "./checklist-workspace-styles";
 import { getRoomingPoctDefinition } from "./rooming-poct-catalog";
 import type { Appointment } from "./types";
 
 const ROOMING_CHECKBOX_TOTAL = 7;
-
-const ROOMING_META_WHEN_ROW_DONE = "opacity-70";
-
-type AmbientListenState = "not_started" | "recording" | "paused" | "stopped";
 
 function RoomingRow({
   isFirst,
@@ -65,13 +68,6 @@ function medsOnFileCount(multiline: string): number {
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean).length;
-}
-
-function ambientStatusLabel(s: AmbientListenState): string {
-  if (s === "not_started") return "Not started";
-  if (s === "recording") return "Recording…";
-  if (s === "paused") return "Paused";
-  return "Stopped";
 }
 
 function regDisplay(text: string): { text: string; isNone: boolean } {
@@ -113,8 +109,9 @@ export function RoomingSection({
 
   const inputSm = cn("h-8 placeholder:text-muted-foreground", textBody);
 
+  const { listenState, setListenState } = useAmbientListen();
+
   const [ambientDone, setAmbientDone] = useState(false);
-  const [listenState, setListenState] = useState<AmbientListenState>("not_started");
 
   const [registrationDone, setRegistrationDone] = useState(false);
   const [vitalsDone, setVitalsDone] = useState(false);
@@ -143,29 +140,69 @@ export function RoomingSection({
 
   const orderedPoctTests = appointment.rooming.orderedPoctTests;
 
+  const ambientStopped = listenState === "stopped";
+
+  const vitalsInputsComplete = useMemo(() => {
+    const f = (s: string) => s.trim().length > 0;
+    return (
+      f(bp) &&
+      f(hr) &&
+      f(spo2) &&
+      f(temp) &&
+      f(weight) &&
+      f(bg) &&
+      f(resp) &&
+      f(asthma) &&
+      f(tobacco)
+    );
+  }, [bp, hr, spo2, temp, weight, bg, resp, asthma, tobacco]);
+
+  const poctInputsComplete = useMemo(() => {
+    if (orderedPoctTests.length === 0) return false;
+    return orderedPoctTests.every(
+      (row) => (poctValues[row.id] ?? "").trim().length > 0,
+    );
+  }, [orderedPoctTests, poctValues]);
+
   useEffect(() => {
-    setAmbientDone(false);
-    setListenState("not_started");
-    setRegistrationDone(false);
-    setVitalsDone(false);
-    setBp("");
-    setHr("");
-    setSpo2("");
-    setTemp("");
-    setWeight("");
-    setBg("");
-    setResp("");
-    setAsthma("");
-    setTobacco("");
-    setVitalsNotes("");
-    setPoctDone(false);
-    setPoctValues({});
-    setMedRecDone(false);
-    setMedRecNotes("");
-    setCallPcpDone(false);
-    setCareMgmtDone(false);
-    setRoomingCollapsed(false);
-    setRoomingUncheckOpen(false);
+    if (!ambientStopped) return;
+    queueMicrotask(() => setAmbientDone(true));
+  }, [ambientStopped, appointment.id, ambientDone]);
+
+  useEffect(() => {
+    if (!vitalsInputsComplete) return;
+    queueMicrotask(() => setVitalsDone(true));
+  }, [vitalsInputsComplete, appointment.id, vitalsDone]);
+
+  useEffect(() => {
+    if (!poctInputsComplete) return;
+    queueMicrotask(() => setPoctDone(true));
+  }, [poctInputsComplete, appointment.id, poctDone]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setAmbientDone(false);
+      setRegistrationDone(false);
+      setVitalsDone(false);
+      setBp("");
+      setHr("");
+      setSpo2("");
+      setTemp("");
+      setWeight("");
+      setBg("");
+      setResp("");
+      setAsthma("");
+      setTobacco("");
+      setVitalsNotes("");
+      setPoctDone(false);
+      setPoctValues({});
+      setMedRecDone(false);
+      setMedRecNotes("");
+      setCallPcpDone(false);
+      setCareMgmtDone(false);
+      setRoomingCollapsed(false);
+      setRoomingUncheckOpen(false);
+    });
   }, [appointment.id]);
 
   const medCount = useMemo(
@@ -176,19 +213,22 @@ export function RoomingSection({
   const roomingCheckedCount = useMemo(
     () =>
       [
-        ambientDone,
+        ambientDone || ambientStopped,
         registrationDone,
-        vitalsDone,
-        poctDone,
+        vitalsDone || vitalsInputsComplete,
+        poctDone || poctInputsComplete,
         medRecDone,
         callPcpDone,
         careMgmtDone,
       ].filter(Boolean).length,
     [
       ambientDone,
+      ambientStopped,
       registrationDone,
       vitalsDone,
+      vitalsInputsComplete,
       poctDone,
+      poctInputsComplete,
       medRecDone,
       callPcpDone,
       careMgmtDone,
@@ -207,82 +247,37 @@ export function RoomingSection({
 
   const uncheckAllRooming = useCallback(() => {
     setAmbientDone(false);
+    setListenState("not_started");
     setRegistrationDone(false);
     setVitalsDone(false);
+    setBp("");
+    setHr("");
+    setSpo2("");
+    setTemp("");
+    setWeight("");
+    setBg("");
+    setResp("");
+    setAsthma("");
+    setTobacco("");
     setPoctDone(false);
+    setPoctValues({});
     setMedRecDone(false);
     setCallPcpDone(false);
     setCareMgmtDone(false);
     setRoomingUncheckOpen(false);
-  }, []);
+  }, [setListenState]);
 
   const allRoomingChecked = roomingCheckedCount === ROOMING_CHECKBOX_TOTAL;
+
+  const ambientRowDone = ambientDone || ambientStopped;
+  const vitalsRowDone = vitalsDone || vitalsInputsComplete;
+  const poctRowDone = poctDone || poctInputsComplete;
 
   const setPoctField = useCallback((rowId: string, value: string) => {
     setPoctValues((prev) => ({ ...prev, [rowId]: value }));
   }, []);
 
   const reg = appointment.rooming.registration;
-
-  const listenButtons = (
-    <>
-      {listenState === "not_started" || listenState === "stopped" ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          className="shrink-0"
-          onClick={() => setListenState("recording")}
-        >
-          Start
-        </Button>
-      ) : null}
-      {listenState === "recording" ? (
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            className="shrink-0"
-            onClick={() => setListenState("paused")}
-          >
-            Pause
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            className="shrink-0"
-            onClick={() => setListenState("stopped")}
-          >
-            Stop
-          </Button>
-        </>
-      ) : null}
-      {listenState === "paused" ? (
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            className="shrink-0"
-            onClick={() => setListenState("recording")}
-          >
-            Resume
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            className="shrink-0"
-            onClick={() => setListenState("stopped")}
-          >
-            Stop
-          </Button>
-        </>
-      ) : null}
-    </>
-  );
 
   return (
     <section className={cn(textBody, sectionClass)} aria-labelledby={`${baseId}-title`}>
@@ -344,39 +339,38 @@ export function RoomingSection({
           checkbox={
             <Checkbox
               id={`${baseId}-ambient-done`}
-              checked={ambientDone}
-              onCheckedChange={(s) => setAmbientDone(s === true)}
+              checked={ambientRowDone}
+              onCheckedChange={(s) => {
+                if (s) setAmbientDone(true);
+                else {
+                  setAmbientDone(false);
+                  setListenState("not_started");
+                }
+              }}
             />
           }
         >
           <div className="flex min-w-0 flex-col gap-2">
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
-              <label
-                htmlFor={`${baseId}-ambient-done`}
-                className={cn(
-                  "min-w-0 flex-1 cursor-pointer wrap-break-word select-none",
-                  textBody,
-                  ambientDone && "text-muted-foreground/50 line-through",
-                )}
-              >
-                Ambient listening
-              </label>
-              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                {listenButtons}
-              </div>
-            </div>
+            <ChecklistLabelActionRow
+              labelId={`${baseId}-ambient-done`}
+              checked={ambientRowDone}
+              actionsWhenCheckedClassName={CHECKLIST_META_WHEN_ROW_DONE}
+              actions={<AmbientListenControls />}
+            >
+              Ambient listening
+            </ChecklistLabelActionRow>
             <p
               className={cn(
                 textMeta,
-                ambientDone && ROOMING_META_WHEN_ROW_DONE,
+                ambientRowDone && CHECKLIST_META_WHEN_ROW_DONE,
               )}
             >
-              {ambientStatusLabel(listenState)}
+              {ambientListenStatusLabel(listenState)}
             </p>
             <p
               className={cn(
                 "text-xs leading-snug text-muted-foreground",
-                ambientDone && ROOMING_META_WHEN_ROW_DONE,
+                ambientRowDone && CHECKLIST_META_WHEN_ROW_DONE,
               )}
             >
               Follow unit policy for consent and documentation; this build does not
@@ -407,7 +401,7 @@ export function RoomingSection({
           <div
             className={cn(
               "grid grid-cols-1 gap-y-4 gap-x-4 lg:grid-cols-2 lg:gap-x-8",
-              registrationDone && ROOMING_META_WHEN_ROW_DONE,
+              registrationDone && CHECKLIST_META_WHEN_ROW_DONE,
             )}
           >
             <RegistrationField label="Insurance" text={reg.insurance} />
@@ -421,8 +415,24 @@ export function RoomingSection({
           checkbox={
             <Checkbox
               id={`${baseId}-vitals`}
-              checked={vitalsDone}
-              onCheckedChange={(s) => setVitalsDone(s === true)}
+              checked={vitalsRowDone}
+              onCheckedChange={(s) => {
+                if (s) setVitalsDone(true);
+                else {
+                  setVitalsDone(false);
+                  if (vitalsInputsComplete) {
+                    setBp("");
+                    setHr("");
+                    setSpo2("");
+                    setTemp("");
+                    setWeight("");
+                    setBg("");
+                    setResp("");
+                    setAsthma("");
+                    setTobacco("");
+                  }
+                }
+              }}
             />
           }
         >
@@ -431,7 +441,7 @@ export function RoomingSection({
             className={cn(
               "min-w-0 cursor-pointer wrap-break-word select-none",
               textBody,
-              vitalsDone && "text-muted-foreground/50 line-through",
+              vitalsRowDone && "text-muted-foreground/50 line-through",
             )}
           >
             Conduct visit related vital signs
@@ -439,7 +449,7 @@ export function RoomingSection({
           <div
             className={cn(
               "grid grid-cols-1 gap-y-4 gap-x-4 md:grid-cols-2 md:gap-x-5 xl:grid-cols-3 xl:gap-x-6",
-              vitalsDone && ROOMING_META_WHEN_ROW_DONE,
+              vitalsRowDone && CHECKLIST_META_WHEN_ROW_DONE,
             )}
           >
             <div className="flex min-w-0 flex-col gap-1.5">
@@ -534,7 +544,7 @@ export function RoomingSection({
           <div
             className={cn(
               "mt-1 grid min-w-0 grid-cols-2 gap-x-4 gap-y-2 pt-3 border-t border-border/40",
-              vitalsDone && ROOMING_META_WHEN_ROW_DONE,
+              vitalsRowDone && CHECKLIST_META_WHEN_ROW_DONE,
             )}
           >
             <div className="flex min-w-0 flex-col gap-1.5">
@@ -574,8 +584,14 @@ export function RoomingSection({
           checkbox={
             <Checkbox
               id={`${baseId}-poct`}
-              checked={poctDone}
-              onCheckedChange={(s) => setPoctDone(s === true)}
+              checked={poctRowDone}
+              onCheckedChange={(s) => {
+                if (s) setPoctDone(true);
+                else {
+                  setPoctDone(false);
+                  if (poctInputsComplete) setPoctValues({});
+                }
+              }}
             />
           }
         >
@@ -584,7 +600,7 @@ export function RoomingSection({
             className={cn(
               "min-w-0 cursor-pointer wrap-break-word select-none",
               textBody,
-              poctDone && "text-muted-foreground/50 line-through",
+              poctRowDone && "text-muted-foreground/50 line-through",
             )}
           >
             Conduct visit related POCT and diagnostics
@@ -592,7 +608,7 @@ export function RoomingSection({
           <div
             className={cn(
               "grid grid-cols-1 gap-y-4 gap-x-4 md:grid-cols-2 md:gap-x-5 xl:grid-cols-3 xl:gap-x-6",
-              poctDone && ROOMING_META_WHEN_ROW_DONE,
+              poctRowDone && CHECKLIST_META_WHEN_ROW_DONE,
             )}
           >
             {orderedPoctTests.map((row) => {
@@ -660,7 +676,7 @@ export function RoomingSection({
           >
             Conduct medication reconciliation
           </label>
-          <p className={cn(textMeta, medRecDone && ROOMING_META_WHEN_ROW_DONE)}>
+          <p className={cn(textMeta, medRecDone && CHECKLIST_META_WHEN_ROW_DONE)}>
             <span className="tabular-nums font-medium text-foreground/80">
               {medCount}
             </span>{" "}
@@ -670,7 +686,7 @@ export function RoomingSection({
             <pre
               className={cn(
                 "whitespace-pre-wrap wrap-break-word rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-sm",
-                medRecDone && ROOMING_META_WHEN_ROW_DONE,
+                medRecDone && CHECKLIST_META_WHEN_ROW_DONE,
               )}
             >
               {appointment.rooming.medicationsOnFileMultiline}

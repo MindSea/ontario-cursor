@@ -9,6 +9,7 @@ export const STAGE_TITLE_LABEL: Record<AppointmentStage, string> = {
   LABS: "Labs",
   "CARE MANAGEMENT": "Care Management",
   "WRAP UP": "Wrap Up",
+  COMPLETED: "Completed",
 };
 
 export function formatAppointmentStage(stage: AppointmentStage): string {
@@ -24,4 +25,5 @@ export const APPOINTMENT_STAGE_ORDER: readonly AppointmentStage[] = [
   "LABS",
   "CARE MANAGEMENT",
   "WRAP UP",
+  "COMPLETED",
 ] as const;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
@@ -24,20 +24,30 @@ import { ScheduleDateRow } from "./schedule-date-row";
  * Care Management: abbreviated when the visit card is narrow; full title-case label when wider.
  */
 function StageBadgeLabel({ stage }: { stage: AppointmentStage }) {
-  if (stage !== "CARE MANAGEMENT") {
+  if (stage === "CARE MANAGEMENT") {
     return (
-      <span className="block truncate">{formatAppointmentStage(stage)}</span>
+      <>
+        <span className="block truncate @min-[11rem]/visit:hidden">
+          Care Mgmt
+        </span>
+        <span className="hidden truncate @min-[11rem]/visit:inline">
+          {formatAppointmentStage(stage)}
+        </span>
+      </>
+    );
+  }
+  if (stage === "COMPLETED") {
+    return (
+      <>
+        <span className="block truncate @min-[11rem]/visit:hidden">Done</span>
+        <span className="hidden truncate @min-[11rem]/visit:inline">
+          {formatAppointmentStage(stage)}
+        </span>
+      </>
     );
   }
   return (
-    <>
-      <span className="block truncate @min-[11rem]/visit:hidden">
-        Care Mgmt
-      </span>
-      <span className="hidden truncate @min-[11rem]/visit:inline">
-        {formatAppointmentStage(stage)}
-      </span>
-    </>
+    <span className="block truncate">{formatAppointmentStage(stage)}</span>
   );
 }
 
@@ -68,6 +78,14 @@ export function AppointmentMasterList({
     const blocks = buildAppointmentBlocks(items);
     return layoutGreedyLanes(blocks);
   }, [items]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const el = document.querySelector(
+      `[data-appointment-id="${CSS.escape(selectedId)}"]`,
+    );
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedId, items]);
 
   return (
     <div
@@ -183,6 +201,7 @@ export function AppointmentMasterList({
                   <button
                     key={block.appointment.id}
                     type="button"
+                    data-appointment-id={block.appointment.id}
                     onClick={() => onSelectId(block.appointment.id)}
                     className={cn(
                       "@container/visit absolute flex min-h-0 flex-col gap-0.5 overflow-hidden rounded-md border px-1.5 py-0.5 text-left",

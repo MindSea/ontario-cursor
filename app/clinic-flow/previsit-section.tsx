@@ -14,11 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { NotesTextarea } from "@/components/ui/notes-textarea";
 import { textBody, textMeta, textOverline } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
+import { ChecklistLabelActionRow } from "./checklist-label-action-row";
+import { CHECKLIST_META_WHEN_ROW_DONE } from "./checklist-workspace-styles";
 import { MutedTagBadge } from "./muted-tag-badge";
 import type { Appointment } from "./types";
 
@@ -30,9 +31,6 @@ type TransportStatus =
 
 /** Interactive checklist rows (checkboxes only). */
 const PREVISIT_CHECKBOX_TOTAL = 5;
-
-/** When the row checkbox is checked, secondary lines ease back slightly (title carries “done”). */
-const PREVISIT_META_WHEN_ROW_DONE = "opacity-70";
 
 /** Subtle emphasis for inline numerics (duration minutes, med count). */
 const PREVISIT_NUM_EMPHASIS = "tabular-nums font-medium text-foreground/80";
@@ -71,84 +69,44 @@ const previsitItemTitleClass = cn(
   textBody,
 );
 
-/**
- * With actions: title stays `w-fit` beside a cluster of tags + buttons. The cluster uses
- * `items-center` so badges line up with taller outline buttons; below `lg` the cluster
- * wraps with the title. From `lg` up, actions are absolute on the right; `pr-56` reserves space.
- */
+/** Title row with optional inline extras (badges) after the label — no trailing actions. */
 function PrevisitItemHeader({
   titleId,
   title,
   leftExtra,
-  actions,
   checked = false,
 }: {
   titleId: string;
   title: string;
   leftExtra?: ReactNode;
-  actions?: ReactNode;
   checked?: boolean;
 }) {
   const titleClass = cn(
     previsitItemTitleClass,
     checked && "text-muted-foreground/50 line-through",
   );
-  const extraWrapClass = cn(checked && PREVISIT_META_WHEN_ROW_DONE);
+  const extraWrapClass = cn(checked && CHECKLIST_META_WHEN_ROW_DONE);
 
-  /** Width follows content so tags sit next to the title; min-w-0 still allows wrapping when tight. */
   const titleClusterWidth = "w-fit min-w-0 max-w-full";
 
-  if (!actions) {
-    return (
-      <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
-        <label
-          htmlFor={titleId}
-          className={cn(titleClass, leftExtra ? titleClusterWidth : null)}
-        >
-          {title}
-        </label>
-        {leftExtra ? (
-          <span
-            className={cn(
-              "flex shrink-0 flex-wrap items-center gap-2",
-              extraWrapClass,
-            )}
-          >
-            {leftExtra}
-          </span>
-        ) : null}
-      </div>
-    );
-  }
-
   return (
-    <div className="relative min-w-0 lg:pr-56">
-      <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-2">
-        <label htmlFor={titleId} className={cn(titleClass, titleClusterWidth)}>
-          {title}
-        </label>
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
-          {leftExtra ? (
-            <span
-              className={cn(
-                "flex shrink-0 flex-wrap items-center gap-2",
-                extraWrapClass,
-              )}
-            >
-              {leftExtra}
-            </span>
-          ) : null}
-          <div
-            className={cn(
-              "flex min-w-0 flex-wrap items-center justify-start gap-2",
-              "lg:absolute lg:top-1/2 lg:right-0 lg:-translate-y-1/2 lg:justify-end",
-              "lg:max-w-[min(22rem,calc(100%-0.5rem))]",
-            )}
-          >
-            {actions}
-          </div>
-        </div>
-      </div>
+    <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
+      <label
+        htmlFor={titleId}
+        className={cn(titleClass, leftExtra ? titleClusterWidth : null)}
+      >
+        {title}
+      </label>
+      {leftExtra ? (
+        <span
+          className={cn(
+            "flex shrink-0 flex-wrap items-center gap-2",
+            extraWrapClass,
+          )}
+        >
+          {leftExtra}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -182,7 +140,6 @@ export function PrevisitSection({
   const [item3Checked, setItem3Checked] = useState(false);
   const [transportStatus, setTransportStatus] =
     useState<TransportStatus>("Not Requested");
-  const [ridePickerOpen, setRidePickerOpen] = useState(false);
   const etaLabel = "Driver: 4m away";
 
   const [item4Checked, setItem4Checked] = useState(false);
@@ -192,12 +149,15 @@ export function PrevisitSection({
   const [previsitCollapsed, setPrevisitCollapsed] = useState(false);
   const [previsitUncheckOpen, setPrevisitUncheckOpen] = useState(false);
 
+  const allFormsComplete = appointment.missingFormNames.length === 0;
+  const transportHandled = transportStatus !== "Not Requested";
+
   const previsitCheckedCount = useMemo(
     () =>
       [
         item1Checked,
-        item2Checked,
-        item3Checked,
+        item2Checked || allFormsComplete,
+        item3Checked || transportHandled,
         item4Checked,
         item5Checked,
       ].filter(Boolean).length,
@@ -207,6 +167,8 @@ export function PrevisitSection({
       item3Checked,
       item4Checked,
       item5Checked,
+      allFormsComplete,
+      transportHandled,
     ],
   );
 
@@ -240,12 +202,22 @@ export function PrevisitSection({
     return `Missing: ${appointment.missingFormNames.join(", ")}`;
   }, [appointment.missingFormNames]);
 
+  /** Auto-check while portal shows all forms complete (demo). */
+  useEffect(() => {
+    if (!allFormsComplete) return;
+    queueMicrotask(() => setItem2Checked(true));
+  }, [allFormsComplete, appointment.id, item2Checked]);
+
+  /** Auto-check while transportation is no longer “Not Requested” (demo). */
+  useEffect(() => {
+    if (!transportHandled) return;
+    queueMicrotask(() => setItem3Checked(true));
+  }, [transportHandled, appointment.id, item3Checked]);
+
   const sectionClass =
     layout === "mobile"
       ? "block w-full rounded-xl border border-border bg-background px-4 pt-4 pb-2 shadow-sm"
       : "mb-0 block w-full rounded-lg border border-border bg-background px-6 pt-6 pb-4 shadow-sm";
-
-  const inputSm = cn("h-8 placeholder:text-muted-foreground", textBody);
 
   return (
     <div className="min-w-0 w-full">
@@ -329,7 +301,7 @@ export function PrevisitSection({
             <p
               className={cn(
                 textMeta,
-                item1Checked && PREVISIT_META_WHEN_ROW_DONE,
+                item1Checked && CHECKLIST_META_WHEN_ROW_DONE,
               )}
             >
               Last attempt: {lastAttemptLabel}
@@ -347,48 +319,55 @@ export function PrevisitSection({
             checkbox={
               <Checkbox
                 id={`${baseId}-i2`}
-                checked={item2Checked}
+                checked={item2Checked || allFormsComplete}
                 onCheckedChange={(s) => setItem2Checked(s === true)}
               />
             }
           >
-            <PrevisitItemHeader
-              titleId={`${baseId}-i2`}
-              title="Encourage completion of forms"
-              checked={item2Checked}
-              leftExtra={
-                <>
-                  <ReadonlyStatusBadge
-                    label={appointment.formCompletionStatus}
-                  />
-                  <MutedTagBadge className="tabular-nums">
-                    {appointment.formsCompleteCount}/
-                    {appointment.formsTotalCount} Forms
-                  </MutedTagBadge>
-                </>
-              }
-              actions={
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="xs"
-                  className="shrink-0"
-                  onClick={() => showToast("Form link resent (demo).")}
-                >
-                  Resend link
-                </Button>
-              }
-            />
-            {missingFormsLine ? (
-              <p
+            <div className="flex min-w-0 flex-col gap-2">
+              <ChecklistLabelActionRow
+                labelId={`${baseId}-i2`}
+                checked={item2Checked || allFormsComplete}
+                actionsWhenCheckedClassName={CHECKLIST_META_WHEN_ROW_DONE}
+                actions={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    className="shrink-0"
+                    onClick={() => showToast("Form link resent (demo).")}
+                  >
+                    Resend link
+                  </Button>
+                }
+              >
+                Encourage completion of forms
+              </ChecklistLabelActionRow>
+              <span
                 className={cn(
-                  textMeta,
-                  item2Checked && PREVISIT_META_WHEN_ROW_DONE,
+                  "flex min-w-0 flex-wrap items-center gap-2",
+                  (item2Checked || allFormsComplete) && CHECKLIST_META_WHEN_ROW_DONE,
                 )}
               >
-                {missingFormsLine}
-              </p>
-            ) : null}
+                <ReadonlyStatusBadge
+                  label={appointment.formCompletionStatus}
+                />
+                <MutedTagBadge className="tabular-nums">
+                  {appointment.formsCompleteCount}/{appointment.formsTotalCount}{" "}
+                  Forms
+                </MutedTagBadge>
+              </span>
+              {missingFormsLine ? (
+                <p
+                  className={cn(
+                    textMeta,
+                    (item2Checked || allFormsComplete) && CHECKLIST_META_WHEN_ROW_DONE,
+                  )}
+                >
+                  {missingFormsLine}
+                </p>
+              ) : null}
+            </div>
           </PrevisitRow>
 
           {/* Item 3 */}
@@ -396,69 +375,49 @@ export function PrevisitSection({
             checkbox={
               <Checkbox
                 id={`${baseId}-i3`}
-                checked={item3Checked}
+                checked={item3Checked || transportHandled}
                 onCheckedChange={(s) => setItem3Checked(s === true)}
               />
             }
           >
-            <PrevisitItemHeader
-              titleId={`${baseId}-i3`}
-              title="Schedule transportation if needed"
-              checked={item3Checked}
-              leftExtra={<ReadonlyStatusBadge label={transportStatus} />}
-              actions={
-                transportStatus === "Not Requested" ? (
-                  <>
+            <div className="flex min-w-0 flex-col gap-2">
+              <ChecklistLabelActionRow
+                labelId={`${baseId}-i3`}
+                checked={item3Checked || transportHandled}
+                actionsWhenCheckedClassName={CHECKLIST_META_WHEN_ROW_DONE}
+                actions={
+                  transportStatus === "Not Requested" ? (
                     <Button
                       type="button"
                       variant="outline"
                       size="xs"
                       className="shrink-0"
-                      aria-expanded={ridePickerOpen}
-                      onClick={() => setRidePickerOpen((o) => !o)}
+                      onClick={() => {
+                        setTransportStatus("Scheduled");
+                        showToast("Transportation scheduled (demo).");
+                      }}
                     >
                       Book ride
                     </Button>
-                    {ridePickerOpen ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2"
-                          onClick={() => {
-                            setTransportStatus("Scheduled");
-                            setRidePickerOpen(false);
-                            showToast("UberX booked (demo).");
-                          }}
-                        >
-                          UberX
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2"
-                          onClick={() => {
-                            setTransportStatus("Scheduled");
-                            setRidePickerOpen(false);
-                            showToast("Uber Assist booked (demo).");
-                          }}
-                        >
-                          Uber Assist
-                        </Button>
-                      </>
-                    ) : null}
-                  </>
-                ) : null
-              }
-            />
-            {transportStatus === "Scheduled" ? (
+                  ) : undefined
+                }
+              >
+                Schedule transportation if needed
+              </ChecklistLabelActionRow>
+              <span
+                className={cn(
+                  "flex min-w-0 flex-wrap items-center gap-2",
+                  (item3Checked || transportHandled) && CHECKLIST_META_WHEN_ROW_DONE,
+                )}
+              >
+                <ReadonlyStatusBadge label={transportStatus} />
+              </span>
+              {transportStatus === "Scheduled" ? (
               <>
                 <p
                   className={cn(
                     textMeta,
-                    item3Checked && PREVISIT_META_WHEN_ROW_DONE,
+                    (item3Checked || transportHandled) && CHECKLIST_META_WHEN_ROW_DONE,
                   )}
                 >
                   Ride booked.
@@ -482,7 +441,7 @@ export function PrevisitSection({
                 <p
                   className={cn(
                     textMeta,
-                    item3Checked && PREVISIT_META_WHEN_ROW_DONE,
+                    (item3Checked || transportHandled) && CHECKLIST_META_WHEN_ROW_DONE,
                   )}
                 >
                   {etaLabel}
@@ -501,16 +460,17 @@ export function PrevisitSection({
                 </Button>
               </>
             ) : null}
-            {transportStatus === "Arrived" ? (
-              <p
-                className={cn(
-                  textMeta,
-                  item3Checked && PREVISIT_META_WHEN_ROW_DONE,
-                )}
-              >
-                Patient has arrived.
-              </p>
-            ) : null}
+              {transportStatus === "Arrived" ? (
+                <p
+                  className={cn(
+                    textMeta,
+                    (item3Checked || transportHandled) && CHECKLIST_META_WHEN_ROW_DONE,
+                  )}
+                >
+                  Patient has arrived.
+                </p>
+              ) : null}
+            </div>
           </PrevisitRow>
 
           {/* Item 4 */}
@@ -531,7 +491,7 @@ export function PrevisitSection({
             <p
               className={cn(
                 textMeta,
-                item4Checked && PREVISIT_META_WHEN_ROW_DONE,
+                item4Checked && CHECKLIST_META_WHEN_ROW_DONE,
               )}
             >
               Estimated duration:{" "}
@@ -561,7 +521,7 @@ export function PrevisitSection({
             <p
               className={cn(
                 textMeta,
-                item5Checked && PREVISIT_META_WHEN_ROW_DONE,
+                item5Checked && CHECKLIST_META_WHEN_ROW_DONE,
               )}
             >
               <span className={PREVISIT_NUM_EMPHASIS}>{medsOnFile}</span> meds on

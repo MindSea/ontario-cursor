@@ -14,14 +14,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { textBody, textOverline } from "@/lib/typography";
+import { textBody, textMeta, textOverline } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
+import { CHECKLIST_META_WHEN_ROW_DONE } from "./checklist-workspace-styles";
+import { MutedTagBadge } from "./muted-tag-badge";
 import type { Appointment } from "./types";
 
 const VISIT_CHECKBOX_TOTAL = 4;
-
-const VISIT_META_WHEN_ROW_DONE = "opacity-70";
 
 function VisitRow({
   isFirst,
@@ -73,12 +73,14 @@ export function VisitSection({
   const supplyLines = appointment.visit.supplyReferenceLines;
 
   useEffect(() => {
-    setHandOffPcp(false);
-    setReenterRoom(false);
-    setReturnAfterPcp(false);
-    setSuppliesDone(false);
-    setVisitCollapsed(false);
-    setVisitUncheckOpen(false);
+    queueMicrotask(() => {
+      setHandOffPcp(false);
+      setReenterRoom(false);
+      setReturnAfterPcp(false);
+      setSuppliesDone(false);
+      setVisitCollapsed(false);
+      setVisitUncheckOpen(false);
+    });
   }, [appointment.id]);
 
   const visitCheckedCount = useMemo(
@@ -246,22 +248,25 @@ export function VisitSection({
           </label>
           <div
             className={cn(
-              "flex flex-col gap-2.5",
-              suppliesDone && VISIT_META_WHEN_ROW_DONE,
+              "flex min-w-0 flex-wrap items-center justify-start gap-2",
+              suppliesDone && CHECKLIST_META_WHEN_ROW_DONE,
             )}
           >
             {supplyLines.length > 0 ? (
               supplyLines.map((line, i) => (
-                <p
+                <MutedTagBadge
                   key={`${baseId}-supply-${i}`}
-                  className={cn("wrap-break-word", textBody)}
+                  className="max-w-full wrap-break-word"
                 >
                   {line}
-                </p>
+                </MutedTagBadge>
               ))
             ) : (
-              <p className={cn(textBody, "text-muted-foreground")}>none</p>
+              <span className={cn(textMeta, "text-muted-foreground")}>none</span>
             )}
+            <p className={cn("w-full", textMeta, "text-muted-foreground")}>
+              Tube collection and per-bundle status are tracked in Labs.
+            </p>
           </div>
         </VisitRow>
       </div>
