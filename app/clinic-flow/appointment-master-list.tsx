@@ -18,6 +18,7 @@ import {
   SLOT_MINUTES,
   slotRowBorderClass,
 } from "./day-schedule-grid";
+import type { FilteredMatchDayOption } from "./schedule-date-row";
 import { ScheduleDateRow } from "./schedule-date-row";
 
 /**
@@ -61,6 +62,8 @@ export function AppointmentMasterList({
   className,
   fullBleed = false,
   hideDateRow = false,
+  filteredMatchDayOptions,
+  onSelectFilteredCalendarDay,
 }: {
   appointments: readonly Appointment[];
   selectedId: string;
@@ -73,6 +76,8 @@ export function AppointmentMasterList({
   fullBleed?: boolean;
   /** When true, only the scrollable grid is rendered (date row is a sibling above). */
   hideDateRow?: boolean;
+  filteredMatchDayOptions?: readonly FilteredMatchDayOption[];
+  onSelectFilteredCalendarDay?: (dateKey: string) => void;
 }) {
   const blockLayouts = useMemo(() => {
     const blocks = buildAppointmentBlocks(items);
@@ -105,14 +110,16 @@ export function AppointmentMasterList({
           onShiftDay={onShiftDay}
           onGoToday={onGoToday}
           fullBleed={fullBleed}
+          filteredMatchDayOptions={filteredMatchDayOptions}
+          onSelectFilteredCalendarDay={onSelectFilteredCalendarDay}
         />
       )}
 
       <div
         className={cn(
-          "w-full ",
+          "w-full",
           fullBleed && hideDateRow
-            ? "w-full "
+            ? "w-full px-4 py-4"
             : fullBleed
               ? "min-h-0"
               : "min-h-0 flex-1 overflow-y-auto overscroll-contain",
@@ -204,7 +211,7 @@ export function AppointmentMasterList({
                     data-appointment-id={block.appointment.id}
                     onClick={() => onSelectId(block.appointment.id)}
                     className={cn(
-                      "@container/visit absolute flex min-h-0 flex-col gap-0.5 overflow-hidden rounded-md border px-1.5 py-0.5 text-left",
+                      "@container/visit absolute flex min-h-0 flex-col gap-2 overflow-hidden rounded-md border px-3 py-2 text-left",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset",
                       isSelected
                         ? "z-10 border-border bg-muted shadow-xl ring-1 ring-inset ring-primary/35"
@@ -225,25 +232,27 @@ export function AppointmentMasterList({
                         aria-hidden
                       />
                     ) : null}
-                    <span
-                      className={cn(
-                        "line-clamp-1 wrap-break-word pl-1 font-medium",
-                        textBody,
-                      )}
-                    >
-                      {block.appointment.patientName}
-                    </span>
-                    <span
-                      className={cn(
-                        "line-clamp-2 wrap-break-word pl-1",
-                        textMeta,
-                      )}
-                    >
-                      {block.appointment.reason}
-                    </span>
+                    <div className="flex min-h-0 min-w-0 flex-col gap-1">
+                      <span
+                        className={cn(
+                          "line-clamp-1 wrap-break-word font-medium",
+                          textBody,
+                        )}
+                      >
+                        {block.appointment.patientName}
+                      </span>
+                      <span
+                        className={cn(
+                          "line-clamp-2 wrap-break-word",
+                          textMeta,
+                        )}
+                      >
+                        {block.appointment.reason}
+                      </span>
+                    </div>
                     <div
                       className={cn(
-                        "flex w-full gap-1 overflow-hidden pl-1",
+                        "flex w-full gap-1.5 overflow-hidden",
                         "flex-col items-start",
                         "@min-[10.5rem]/visit:flex-row @min-[10.5rem]/visit:flex-wrap @min-[10.5rem]/visit:items-start",
                       )}

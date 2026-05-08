@@ -14,6 +14,8 @@ import { filterAppointmentsForScheduleToolbar } from "./schedule-appointment-fil
 import type { BuildingPresenceBucket } from "./schedule-building-filter";
 import { buildingPresenceBucketForAppointment } from "./schedule-building-filter";
 import { DEMO_ACCOUNT_NAVIGATOR } from "./schedule-constants";
+import type { FilteredMatchDayOption } from "./schedule-date-row";
+import type { ScheduleViewMode } from "./schedule-view-toggle";
 
 export default function ClinicFlowPage() {
   const [appointments, setAppointments] = useState(() =>
@@ -35,6 +37,8 @@ export default function ClinicFlowPage() {
   >(["in_building"]);
 
   const [patientSearchQuery, setPatientSearchQuery] = useState("");
+  const [scheduleViewMode, setScheduleViewMode] =
+    useState<ScheduleViewMode>("grid");
 
   const toolbarIdDesk = useId();
   const toolbarIdMobile = useId();
@@ -59,6 +63,21 @@ export default function ClinicFlowPage() {
       appointmentsPassingFilters.filter((a) => a.date === selectedDateKey),
     [appointmentsPassingFilters, selectedDateKey],
   );
+
+  /** Days (sorted) that have ≥1 appointment matching toolbar filters, with counts. */
+  const filteredMatchDayOptions = useMemo((): FilteredMatchDayOption[] => {
+    const byDate = new Map<string, number>();
+    for (const a of appointmentsPassingFilters) {
+      byDate.set(a.date, (byDate.get(a.date) ?? 0) + 1);
+    }
+    return [...byDate.entries()]
+      .map(([dateKey, count]) => ({ dateKey, count }))
+      .sort((x, y) => x.dateKey.localeCompare(y.dateKey));
+  }, [appointmentsPassingFilters]);
+
+  const selectFilteredCalendarDay = useCallback((dateKey: string) => {
+    setSelectedDate(parse(dateKey, "yyyy-MM-dd", new Date()));
+  }, []);
 
   const selectedAppointment = useMemo(
     () => appointments.find((a) => a.id === selectedId) ?? null,
@@ -150,6 +169,10 @@ export default function ClinicFlowPage() {
         onSwitchToWorkspaceTab={() => setMobileTab("workspace")}
         onUpdateAppointment={updateAppointment}
         scheduleToolbarProps={scheduleToolbarMobileProps}
+        scheduleViewMode={scheduleViewMode}
+        onScheduleViewModeChange={setScheduleViewMode}
+        filteredMatchDayOptions={filteredMatchDayOptions}
+        onSelectFilteredCalendarDay={selectFilteredCalendarDay}
       />
 
       <ClinicFlowDesktop
@@ -165,6 +188,10 @@ export default function ClinicFlowPage() {
         selectedAppointment={selectedAppointment}
         onUpdateAppointment={updateAppointment}
         scheduleToolbarProps={scheduleToolbarDeskProps}
+        scheduleViewMode={scheduleViewMode}
+        onScheduleViewModeChange={setScheduleViewMode}
+        filteredMatchDayOptions={filteredMatchDayOptions}
+        onSelectFilteredCalendarDay={selectFilteredCalendarDay}
       />
     </div>
   );

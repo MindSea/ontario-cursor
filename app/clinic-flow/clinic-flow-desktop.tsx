@@ -19,6 +19,14 @@ import { LabsSection } from "./labs-section";
 import { VisitSection } from "./visit-section";
 import { WorkspaceHuddleCard } from "./workspace-huddle-card";
 import { WorkspacePinnedHeader } from "./workspace-pinned-header";
+import { DayAgendaList } from "./day-agenda-list";
+import type { FilteredMatchDayOption } from "./schedule-date-row";
+import { ScheduleDateRow } from "./schedule-date-row";
+import {
+  ScheduleViewToggle,
+  type ScheduleViewMode,
+} from "./schedule-view-toggle";
+import { SchedulePatientSearch } from "./schedule-patient-search";
 import { ScheduleToolbar, type ScheduleToolbarProps } from "./schedule-toolbar";
 
 export type ClinicFlowDesktopProps = {
@@ -33,6 +41,10 @@ export type ClinicFlowDesktopProps = {
   selectedAppointment: Appointment | null;
   onUpdateAppointment: (id: string, patch: Partial<Appointment>) => void;
   scheduleToolbarProps: ScheduleToolbarProps;
+  scheduleViewMode: ScheduleViewMode;
+  onScheduleViewModeChange: (mode: ScheduleViewMode) => void;
+  filteredMatchDayOptions: readonly FilteredMatchDayOption[];
+  onSelectFilteredCalendarDay: (dateKey: string) => void;
   /** Merged onto the root wrapper (layout visibility from `useClinicFlowShellLayout`). */
   className?: string;
 };
@@ -49,6 +61,10 @@ export function ClinicFlowDesktop({
   selectedAppointment,
   onUpdateAppointment,
   scheduleToolbarProps,
+  scheduleViewMode,
+  onScheduleViewModeChange,
+  filteredMatchDayOptions,
+  onSelectFilteredCalendarDay,
   className,
 }: ClinicFlowDesktopProps) {
   return (
@@ -69,7 +85,7 @@ export function ClinicFlowDesktop({
           <div className="pb-2">
             <div
               className={cn(
-                "flex w-full min-w-0 items-center justify-between gap-3",
+                "flex w-full min-w-0 items-center gap-3",
                 isSidebarVisible && "px-4 md:px-6",
               )}
             >
@@ -79,6 +95,20 @@ export function ClinicFlowDesktop({
                   {CLINIC_FLOW_PAGE_TITLE}
                 </h1>
               </div>
+              <SchedulePatientSearch
+                idPrefix={scheduleToolbarProps.idPrefix}
+                allAppointments={scheduleToolbarProps.allAppointments}
+                patientSearchQuery={scheduleToolbarProps.patientSearchQuery}
+                onPatientSearchQueryChange={
+                  scheduleToolbarProps.onPatientSearchQueryChange
+                }
+                onNavigateToAppointment={
+                  scheduleToolbarProps.onNavigateToAppointment
+                }
+                fullWidth={false}
+                size="compact"
+                className="min-w-0 w-[min(100%,18rem)] max-w-md shrink-0 md:w-72"
+              />
               <Button
                 type="button"
                 variant="outline"
@@ -91,10 +121,6 @@ export function ClinicFlowDesktop({
               </Button>
             </div>
           </div>
-          <ScheduleToolbar
-            {...scheduleToolbarProps}
-            insetWithWorkspace={!isSidebarVisible}
-          />
         </div>
       </div>
 
@@ -109,15 +135,54 @@ export function ClinicFlowDesktop({
           aria-hidden={!isSidebarVisible}
         >
           <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
-            <AppointmentMasterList
-              appointments={appointmentsForGrid}
-              selectedId={selectedId}
-              onSelectId={onSelectId}
+            <ScheduleToolbar
+              {...scheduleToolbarProps}
+              layout="panel"
+              showPatientSearch={false}
+            />
+            <ScheduleDateRow
               selectedDate={selectedDate}
               onShiftDay={onShiftDay}
               onGoToday={onGoToday}
-              className="min-h-0 w-full min-w-0 flex-1"
+              className="w-full shrink-0 border-t border-border/40 px-2"
+              filteredMatchDayOptions={filteredMatchDayOptions}
+              onSelectFilteredCalendarDay={onSelectFilteredCalendarDay}
             />
+            <div className="flex w-full shrink-0 border-b border-border/40 px-1 py-1">
+              <ScheduleViewToggle
+                value={scheduleViewMode}
+                onChange={onScheduleViewModeChange}
+                className="w-full"
+              />
+            </div>
+            {scheduleViewMode === "grid" ? (
+              <AppointmentMasterList
+                appointments={appointmentsForGrid}
+                selectedId={selectedId}
+                onSelectId={onSelectId}
+                selectedDate={selectedDate}
+                onShiftDay={onShiftDay}
+                onGoToday={onGoToday}
+                hideDateRow
+                filteredMatchDayOptions={filteredMatchDayOptions}
+                onSelectFilteredCalendarDay={onSelectFilteredCalendarDay}
+                className="min-h-0 w-full min-w-0 flex-1"
+              />
+            ) : (
+              <DayAgendaList
+                appointments={appointmentsForGrid}
+                selectedId={selectedId}
+                onSelectId={onSelectId}
+                selectedDate={selectedDate}
+                onShiftDay={onShiftDay}
+                onGoToday={onGoToday}
+                onUpdateAppointment={onUpdateAppointment}
+                hideDateRow
+                filteredMatchDayOptions={filteredMatchDayOptions}
+                onSelectFilteredCalendarDay={onSelectFilteredCalendarDay}
+                className="min-h-0 w-full min-w-0 flex-1"
+              />
+            )}
           </div>
         </aside>
 

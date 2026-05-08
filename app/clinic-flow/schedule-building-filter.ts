@@ -24,12 +24,28 @@ export function buildingPresenceBucketForAppointment(
   return appointmentInBuilding(apt.stage) ? "in_building" : "not_in_building";
 }
 
+/** Every bucket selected OR none selected — same as no restriction on this axis. */
+export function buildingPresenceBucketsShowAll(
+  selectedBuckets: readonly BuildingPresenceBucket[],
+): boolean {
+  if (selectedBuckets.length === 0) return true;
+  const set = new Set(selectedBuckets);
+  return BUILDING_PRESENCE_BUCKET_ORDER.every((b) => set.has(b));
+}
+
+/** True when the status filter actually narrows the schedule (not “all” / both). */
+export function buildingPresenceFilterNarrows(
+  selectedBuckets: readonly BuildingPresenceBucket[],
+): boolean {
+  return !buildingPresenceBucketsShowAll(selectedBuckets);
+}
+
 /** Empty `selectedBuckets` means no filter on this axis (show all). */
 export function appointmentMatchesSelectedBuildingBuckets(
   apt: Appointment,
   selectedBuckets: readonly BuildingPresenceBucket[],
 ): boolean {
-  if (selectedBuckets.length === 0) return true;
+  if (buildingPresenceBucketsShowAll(selectedBuckets)) return true;
   const inBuilding = appointmentInBuilding(apt.stage);
   return selectedBuckets.some((b) =>
     b === "in_building" ? inBuilding : !inBuilding,

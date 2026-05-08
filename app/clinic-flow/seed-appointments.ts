@@ -1,8 +1,10 @@
 import { addDays, format, subDays } from "date-fns";
 
 import { intakeBundleProgressFromMissing } from "./intake-form-catalog";
+import { deriveSeedCheckedInAt } from "./schedule-agenda-seed";
 import type {
   Appointment,
+  AppointmentSeed,
   AppointmentStage,
   CareManagementSeed,
   RoomingSeed,
@@ -40,334 +42,168 @@ function careManagement(seed: CareManagementSeed): CareManagementSeed {
 
 const noMissingForms = [] as const;
 
-function buildExtraAppointments(
+/** Same count each day; spread across the clinic day. */
+const SEED_APPOINTMENTS_PER_DAY = 10;
+
+const SEED_SLOT_TIMES = [
+  "08:00 AM",
+  "08:40 AM",
+  "09:20 AM",
+  "10:00 AM",
+  "10:40 AM",
+  "11:20 AM",
+  "12:10 PM",
+  "01:10 PM",
+  "02:20 PM",
+  "03:30 PM",
+] as const;
+
+/** Today only: one row per template index (covers pipeline + two PREVISIT slots). */
+const SEED_TODAY_STAGES: readonly AppointmentStage[] = [
+  "PREVISIT",
+  "INTAKE",
+  "ROOMING",
+  "VISIT",
+  "LABS",
+  "CARE MANAGEMENT",
+  "WRAP UP",
+  "VISIT",
+  "COMPLETED",
+  "PREVISIT",
+];
+
+function remapSeedIds(seed: AppointmentSeed, newId: string): AppointmentSeed {
+  const old = seed.id;
+  if (old === newId) return seed;
+  const prefix = (s: string) =>
+    s.startsWith(`${old}-`) ? `${newId}-${s.slice(old.length + 1)}` : s;
+  return {
+    ...seed,
+    id: newId,
+    huddleTasks: seed.huddleTasks.map((t) => ({ ...t, id: prefix(t.id) })),
+    intakeFormResults: seed.intakeFormResults.map((r) => ({
+      ...r,
+      id: prefix(r.id),
+    })),
+    rooming: {
+      ...seed.rooming,
+      orderedPoctTests: seed.rooming.orderedPoctTests.map((p) => ({
+        ...p,
+        id: prefix(p.id),
+      })),
+    },
+  };
+}
+
+function roomForStage(
+  stage: AppointmentStage,
+  templateRoom: string,
+): string {
+  if (stage === "PREVISIT") return "WAIT";
+  if (stage === "LABS") {
+    return templateRoom === "LAB 1" || templateRoom.startsWith("LAB")
+      ? templateRoom
+      : "LAB 1";
+  }
+  if (stage === "COMPLETED") {
+    if (templateRoom === "WAIT") return "RM 2";
+    return templateRoom.startsWith("RM") ? templateRoom : "RM 1";
+  }
+  if (templateRoom === "WAIT") return "RM 2";
+  return templateRoom;
+}
+
+/** Yesterday: finished day — charts closed, intake bundle complete in seed. */
+function alignPastCompleted(seed: AppointmentSeed): AppointmentSeed {
+  return {
+    ...seed,
+    stage: "COMPLETED",
+    room: roomForStage("COMPLETED", seed.room),
+    missingFormNames: noMissingForms,
+    ...intakeBundleProgressFromMissing(noMissingForms),
+    intakeFormResults: [],
+    huddleTasks: seed.huddleTasks.map((t) => ({ ...t, completed: true })),
+  };
+}
+
+/** Tomorrow (and template previsit): scheduled only — not arrived, light open work. */
+function alignFuturePrevisit(seed: AppointmentSeed): AppointmentSeed {
+  const missing =
+    seed.missingFormNames.length > 0
+      ? [...seed.missingFormNames]
+      : (["Communication form", "Authorization and Consent for treatment"] as const);
+  const capped = missing.slice(0, Math.min(4, missing.length));
+  return {
+    ...seed,
+    stage: "PREVISIT",
+    room: "WAIT",
+    missingFormNames: capped,
+    ...intakeBundleProgressFromMissing(capped),
+    huddleTasks: seed.huddleTasks.map((t) => ({ ...t, completed: false })),
+  };
+}
+
+function buildTriDaySeeds(
   yesterday: string,
   today: string,
   tomorrow: string,
-): Appointment[] {
-  const emptyIntake = () => ({
-    missingFormNames: noMissingForms,
-    ...intakeBundleProgressFromMissing(noMissingForms),
-  });
-  const simpleRooming = () =>
-    rooming({
-      registration: {
-        insurance: "Medicare",
-        pharmacy: "CVS Pharmacy",
-        emergencyContact: "",
-        paymentSource: "Medicare",
-      },
-      orderedPoctTests: [],
-      medicationsOnFileMultiline: "",
-    });
-  const simpleHuddle = (id: string, text: string) => [
-    { id: `${id}-h1`, text, completed: false as const },
-  ];
+  templates: readonly AppointmentSeed[],
+): AppointmentSeed[] {
+  const n = SEED_APPOINTMENTS_PER_DAY;
+  if (templates.length !== n) {
+    throw new Error(
+      `Expected ${n} visit templates, got ${templates.length}`,
+    );
+  }
+  const slots = SEED_SLOT_TIMES;
+  const out: AppointmentSeed[] = [];
 
-  const row = (
-    id: string,
-    date: string,
-    time: string,
-    patientName: string,
-    dateOfBirth: string,
-    room: string,
-    stage: AppointmentStage,
-    reason: string,
-    appointmentType: string,
-    estimatedDurationMins: number,
-    pcp: string,
-    navigator: string,
-  ): Appointment => ({
-    id,
-    date,
-    time,
-    patientName,
-    dateOfBirth,
-    room,
-    stage,
-    reason,
-    appointmentType,
-    estimatedDurationMins,
-    pcp,
-    navigator,
-    ...emptyIntake(),
-    intakeFormResults: [],
-    huddleTasks: simpleHuddle(id, `Prep: ${reason}`),
-    rooming: simpleRooming(),
-    visit: visit({ supplyReferenceLines: [] }),
-    careManagement: careManagement({
-      recommendedCadence: "PCP: Follow-up as needed",
-    }),
-  });
+  for (let i = 0; i < n; i++) {
+    const t = templates[i]!;
+    out.push(
+      remapSeedIds(
+        alignPastCompleted({
+          ...t,
+          date: yesterday,
+          time: slots[i]!,
+        }),
+        String(i + 1),
+      ),
+    );
+  }
 
-  return [
-    row(
-      "12",
-      yesterday,
-      "08:00 AM",
-      "Theo Banks",
-      "1952-02-14",
-      "RM 1",
-      "INTAKE",
-      "Diabetes follow-up",
-      "Established Follow-up",
-      30,
-      "Dr. Patel",
-      "Sam",
-    ),
-    row(
-      "13",
-      yesterday,
-      "09:15 AM",
-      "Grace Okonkwo",
-      "1946-08-30",
-      "RM 3",
-      "VISIT",
-      "CKD review",
-      "Chronic Care Visit",
-      45,
-      "Dr. Nguyen",
-      "Jordan",
-    ),
-    row(
-      "14",
-      yesterday,
-      "11:45 AM",
-      "Victor Ramos",
-      "1939-12-01",
-      "LAB 1",
-      "LABS",
-      "Standing lab draw",
-      "Lab Draw",
-      20,
-      "Dr. Ellis",
-      "Riley",
-    ),
-    row(
-      "15",
-      yesterday,
-      "02:30 PM",
-      "Nina Patel",
-      "1958-05-20",
-      "WAIT",
-      "PREVISIT",
-      "New patient paperwork",
-      "New Patient",
-      45,
-      "Dr. Kim",
-      "Anna",
-    ),
-    row(
-      "16",
-      yesterday,
-      "03:45 PM",
-      "Omar Haddad",
-      "1944-11-11",
-      "RM 4",
-      "COMPLETED",
-      "Nurse visit (completed)",
-      "Nurse Visit",
-      30,
-      "Dr. Aris",
-      "Marcus",
-    ),
-    row(
-      "17",
-      today,
-      "12:45 PM",
-      "Claire Bennett",
-      "1951-07-07",
-      "RM 3",
-      "ROOMING",
-      "URI symptoms",
-      "Acute Sick Visit",
-      30,
-      "Dr. Patel",
-      "Riley",
-    ),
-    row(
-      "18",
-      today,
-      "01:15 PM",
-      "Walter Ng",
-      "1947-03-29",
-      "RM 4",
-      "CARE MANAGEMENT",
-      "Tobacco counseling",
-      "Care Management",
-      40,
-      "Dr. Nguyen",
-      "Sam",
-    ),
-    row(
-      "19",
-      today,
-      "01:45 PM",
-      "Iris McConnell",
-      "1954-10-18",
-      "RM 5",
-      "WRAP UP",
-      "Procedure instructions",
-      "Procedure Follow-up",
-      30,
-      "Dr. Kim",
-      "Jordan",
-    ),
-    row(
-      "20",
-      today,
-      "02:30 PM",
-      "Ben Carter",
-      "1941-01-25",
-      "WAIT",
-      "PREVISIT",
-      "Annual wellness",
-      "Wellness Visit",
-      45,
-      "Dr. Ellis",
-      "Sam",
-    ),
-    row(
-      "21",
-      today,
-      "03:00 PM",
-      "Yuki Tanaka",
-      "1956-06-06",
-      "RM 1",
-      "VISIT",
-      "Hypothyroid check",
-      "Chronic Care Visit",
-      30,
-      "Dr. Patel",
-      "Anna",
-    ),
-    row(
-      "22",
-      today,
-      "03:30 PM",
-      "Renee Foster",
-      "1949-09-09",
-      "LAB 1",
-      "LABS",
-      "Coumadin clinic",
-      "Lab Draw",
-      25,
-      "Dr. Aris",
-      "Riley",
-    ),
-    row(
-      "23",
-      tomorrow,
-      "08:30 AM",
-      "Marcus Webb",
-      "1953-04-04",
-      "RM 2",
-      "INTAKE",
-      "Post-hospital follow-up",
-      "Post-Acute Follow-up",
-      60,
-      "Dr. Nguyen",
-      "Marcus",
-    ),
-    row(
-      "24",
-      tomorrow,
-      "09:00 AM",
-      "Priya Shah",
-      "1959-11-23",
-      "RM 3",
-      "ROOMING",
-      "Back pain",
-      "Acute Sick Visit",
-      30,
-      "Dr. Kim",
-      "Anna",
-    ),
-    row(
-      "25",
-      tomorrow,
-      "10:15 AM",
-      "Louisa Fernandez",
-      "1943-07-17",
-      "RM 4",
-      "VISIT",
-      "CHF clinic",
-      "Chronic Care Visit",
-      45,
-      "Dr. Ellis",
-      "Jordan",
-    ),
-    row(
-      "26",
-      tomorrow,
-      "11:30 AM",
-      "Greg Powell",
-      "1950-12-12",
-      "WAIT",
-      "PREVISIT",
-      "Labs prior to visit",
-      "Lab Draw",
-      20,
-      "Dr. Patel",
-      "Sam",
-    ),
-    row(
-      "27",
-      tomorrow,
-      "12:15 PM",
-      "Hannah Brooks",
-      "1957-08-08",
-      "RM 5",
-      "CARE MANAGEMENT",
-      "SDOH screening",
-      "Care Management",
-      35,
-      "Dr. Nguyen",
-      "Riley",
-    ),
-    row(
-      "28",
-      tomorrow,
-      "01:00 PM",
-      "Derek Stone",
-      "1940-02-02",
-      "RM 1",
-      "WRAP UP",
-      "Discharge teaching",
-      "Post-Acute Follow-up",
-      30,
-      "Dr. Aris",
-      "Sam",
-    ),
-    row(
-      "29",
-      tomorrow,
-      "02:45 PM",
-      "Amelia Cruz",
-      "1955-05-05",
-      "RM 2",
-      "COMPLETED",
-      "Same-day procedure (completed)",
-      "Procedure Follow-up",
-      45,
-      "Dr. Kim",
-      "Anna",
-    ),
-    row(
-      "30",
-      tomorrow,
-      "04:00 PM",
-      "Jonas Meyer",
-      "1948-09-19",
-      "RM 3",
-      "VISIT",
-      "Medicare wellness",
-      "Medicare wellness & vaccines",
-      40,
-      "Dr. Patel",
-      "Jordan",
-    ),
-  ];
+  for (let i = 0; i < n; i++) {
+    const t = templates[i]!;
+    const stage = SEED_TODAY_STAGES[i]!;
+    out.push(
+      remapSeedIds(
+        {
+          ...t,
+          date: today,
+          time: slots[i]!,
+          stage,
+          room: roomForStage(stage, t.room),
+        },
+        String(n + i + 1),
+      ),
+    );
+  }
+
+  for (let i = 0; i < n; i++) {
+    const t = templates[i]!;
+    out.push(
+      remapSeedIds(
+        alignFuturePrevisit({
+          ...t,
+          date: tomorrow,
+          time: slots[i]!,
+        }),
+        String(2 * n + i + 1),
+      ),
+    );
+  }
+
+  return out;
 }
 
 /**
@@ -384,6 +220,12 @@ function buildExtraAppointments(
  *
  * Care Management → `careManagement.recommendedCadence`: short per-patient line under
  * “Schedule next appointment at TSH” (demo variety).
+ *
+ * Calendar: exactly `SEED_APPOINTMENTS_PER_DAY` visits on each of yesterday, today,
+ * and tomorrow (rolling dates). The same ten visit profiles rotate across those days:
+ * yesterday all `COMPLETED` with intake cleared and huddles marked done; today uses
+ * `SEED_TODAY_STAGES`; tomorrow all `PREVISIT` with capped outstanding forms. Nested
+ * ids are remapped per appointment (ids `1`–`30`).
  */
 
 export function buildSeedAppointments(): Appointment[] {
@@ -429,7 +271,8 @@ export function buildSeedAppointments(): Appointment[] {
     "VES-13",
   ] as const;
 
-  const core: Appointment[] = [
+  /** Ten visit profiles; dates/times/stages are assigned in `buildTriDaySeeds`. */
+  const visitCoreTemplates: AppointmentSeed[] = [
     {
       id: "1",
       date: today,
@@ -1005,52 +848,8 @@ export function buildSeedAppointments(): Appointment[] {
     },
     {
       id: "10",
-      date: tomorrow,
-      time: "02:00 PM",
-      patientName: "Sarah Jenkins",
-      dateOfBirth: "1948-03-12",
-      room: "RM 1",
-      stage: "COMPLETED",
-      reason: "Follow-up labs (booked)",
-      appointmentType: "Post-Acute Follow-up",
-      estimatedDurationMins: 45,
-      pcp: "Dr. Ellis",
-      navigator: "Anna",
-      missingFormNames: missingSarah,
-      ...intakeBundleProgressFromMissing(missingSarah),
-      intakeFormResults: [
-        {
-          id: "10-r1",
-          formLabel: "PHQ 2/9",
-          resultSummary: "8 (Mild)",
-          navigatorAction: "Stable mood at prior visit",
-          shortFlag: "PHQ-9: 8",
-          severity: "low",
-        },
-      ],
-      huddleTasks: [
-        { id: "10-h1", text: "Confirm prior visit A1C trend", completed: false },
-      ],
-      rooming: rooming({
-        registration: {
-          insurance: "Medicare with supplemental (Humana)",
-          pharmacy: "Main Street Pharmacy",
-          emergencyContact: "Mary Jenkins (daughter)",
-          paymentSource: "Medicare",
-        },
-        orderedPoctTests: [{ id: "10-p1", testType: "HEMOGLOBIN_A1C" }],
-        medicationsOnFileMultiline:
-          "Furosemide 40 mg tablet — 1 tab daily\nMetoprolol succinate 25 mg ER — 1 tab daily",
-      }),
-      visit: visit({ supplyReferenceLines: ["A1C (Lab)"] }),
-      careManagement: careManagement({
-        recommendedCadence: "PCP: Follow-up in 2 weeks",
-      }),
-    },
-    {
-      id: "11",
-      date: yesterday,
-      time: "10:30 AM",
+      date: today,
+      time: "03:30 PM",
       patientName: "Evelyn Hart",
       dateOfBirth: "1943-04-22",
       room: "WAIT",
@@ -1064,7 +863,7 @@ export function buildSeedAppointments(): Appointment[] {
       ...intakeBundleProgressFromMissing(missingJames),
       intakeFormResults: [],
       huddleTasks: [
-        { id: "11-h1", text: "Verify insurance card copy", completed: false },
+        { id: "10-h1", text: "Verify insurance card copy", completed: false },
       ],
       rooming: rooming({
         registration: {
@@ -1082,5 +881,14 @@ export function buildSeedAppointments(): Appointment[] {
       }),
     },
   ];
-  return [...core, ...buildExtraAppointments(yesterday, today, tomorrow)];
+  const seeds = buildTriDaySeeds(
+    yesterday,
+    today,
+    tomorrow,
+    visitCoreTemplates,
+  );
+  return seeds.map((a) => ({
+    ...a,
+    checkedInAt: deriveSeedCheckedInAt(a),
+  }));
 }

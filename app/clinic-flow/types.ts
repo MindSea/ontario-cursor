@@ -51,6 +51,11 @@ export type Appointment = {
   pcp: string;
   /** Single assigned navigator for the visit. */
   navigator: string;
+  /**
+   * When the patient checked in (ISO timestamp). `null` = not yet arrived for this visit day.
+   * Demo seed sets this from stage; staff can set via agenda “Mark arrived”.
+   */
+  checkedInAt: string | null;
   /** Patient-side completion of the fixed intake screening bundle (seed / server; not toggled in UI). */
   formCompletionStatus: FormCompletionStatus;
   /** Outstanding forms from the eight-form bundle (`intake-form-catalog` names); empty when none missing. */
@@ -69,6 +74,9 @@ export type Appointment = {
   /** Care Management workspace copy (seed); cadence drives the “Schedule next appointment” meta line. */
   careManagement: CareManagementSeed;
 };
+
+/** Seed rows omit `checkedInAt`; `buildSeedAppointments` attaches it. */
+export type AppointmentSeed = Omit<Appointment, "checkedInAt">;
 
 /** Seed-only strings for the Care Management checklist (demo). */
 export type CareManagementSeed = {
