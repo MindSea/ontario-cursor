@@ -152,7 +152,7 @@ export function SchedulePatientSearch({
           id={listboxId}
           role="listbox"
           className={cn(
-            "absolute left-0 right-0 top-full z-[100] mt-1 max-h-60 min-w-0 overflow-y-auto overflow-x-hidden rounded-md border border-border bg-popover py-1 text-sm leading-snug text-popover-foreground shadow-md",
+            "absolute top-full right-0 left-0 z-100 mt-1 max-h-60 min-w-0 overflow-y-auto overflow-x-hidden rounded-md border border-border bg-popover py-1 text-sm leading-snug text-popover-foreground shadow-md",
           )}
         >
           {nameMatches.length === 0 ? (

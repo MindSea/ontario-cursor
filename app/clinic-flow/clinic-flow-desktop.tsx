@@ -45,7 +45,7 @@ export type ClinicFlowDesktopProps = {
   onScheduleViewModeChange: (mode: ScheduleViewMode) => void;
   filteredMatchDayOptions: readonly FilteredMatchDayOption[];
   onSelectFilteredCalendarDay: (dateKey: string) => void;
-  /** Merged onto the root wrapper (layout visibility from `useClinicFlowShellLayout`). */
+  /** Merged onto the root wrapper (shell visibility from `page.tsx` + `useClinicFlowShellLayout`). */
   className?: string;
 };
 
@@ -144,7 +144,7 @@ export function ClinicFlowDesktop({
               selectedDate={selectedDate}
               onShiftDay={onShiftDay}
               onGoToday={onGoToday}
-              className="w-full shrink-0 border-t border-border/40 px-2"
+              className="w-full shrink-0 px-2"
               filteredMatchDayOptions={filteredMatchDayOptions}
               onSelectFilteredCalendarDay={onSelectFilteredCalendarDay}
             />

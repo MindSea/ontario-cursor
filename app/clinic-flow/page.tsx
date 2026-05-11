@@ -1,28 +1,40 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { format, parse } from "date-fns";
 
 import type { Appointment } from "./types";
 
+import { cn } from "@/lib/utils";
+
 import { shiftCalendarDay } from "./calendar-utils";
 import { ClinicFlowDesktop } from "./clinic-flow-desktop";
 import { ClinicFlowMobile } from "./clinic-flow-mobile";
-import { useClinicFlowShellLayout } from "./use-clinic-flow-shell-layout";
-import { buildSeedAppointments } from "./seed-appointments";
 import { filterAppointmentsForScheduleToolbar } from "./schedule-appointment-filters";
 import type { BuildingPresenceBucket } from "./schedule-building-filter";
 import { buildingPresenceBucketForAppointment } from "./schedule-building-filter";
 import { DEMO_ACCOUNT_NAVIGATOR } from "./schedule-constants";
+import { createClinicFlowInitialState } from "./create-clinic-flow-initial-state";
+import { useClinicFlowShellLayout } from "./use-clinic-flow-shell-layout";
 import type { FilteredMatchDayOption } from "./schedule-date-row";
 import type { ScheduleViewMode } from "./schedule-view-toggle";
+import type { ScheduleSheetsApi } from "./schedule-toolbar";
+
+const SCHEDULE_VIEW_MODE_STORAGE_KEY = "clinic-flow.scheduleViewMode";
 
 export default function ClinicFlowPage() {
-  const [appointments, setAppointments] = useState(() =>
-    buildSeedAppointments(),
-  );
+  const initial = useMemo(() => createClinicFlowInitialState(), []);
+  const [appointments, setAppointments] = useState(initial.appointments);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
-  const [selectedId, setSelectedId] = useState("2");
+  const [selectedId, setSelectedId] = useState(initial.selectedId);
   const [mobileTab, setMobileTab] = useState<"schedule" | "workspace">(
     "schedule",
   );
@@ -40,8 +52,29 @@ export default function ClinicFlowPage() {
   const [scheduleViewMode, setScheduleViewMode] =
     useState<ScheduleViewMode>("grid");
 
+  useLayoutEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(SCHEDULE_VIEW_MODE_STORAGE_KEY);
+      if (raw === "agenda" || raw === "grid") setScheduleViewMode(raw);
+    } catch {
+      /* sessionStorage unavailable */
+    }
+  }, []);
+
+  const handleScheduleViewModeChange = useCallback((mode: ScheduleViewMode) => {
+    setScheduleViewMode(mode);
+    try {
+      sessionStorage.setItem(SCHEDULE_VIEW_MODE_STORAGE_KEY, mode);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const toolbarIdDesk = useId();
   const toolbarIdMobile = useId();
+  const scheduleSheetsApiRef = useRef<ScheduleSheetsApi | null>(null);
+
+  const { rootRef, insetNarrow } = useClinicFlowShellLayout();
 
   const selectedDateKey = useMemo(
     () => format(selectedDate, "yyyy-MM-dd"),
@@ -146,9 +179,9 @@ export default function ClinicFlowPage() {
   const scheduleToolbarMobileProps = {
     ...scheduleToolbarDeskProps,
     idPrefix: toolbarIdMobile,
+    panelDetachSearchButton: true,
+    scheduleSheetsApiRef,
   };
-
-  const { rootRef, showMobileShell } = useClinicFlowShellLayout();
 
   return (
     <div
@@ -156,7 +189,9 @@ export default function ClinicFlowPage() {
       className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-background font-sans text-foreground"
     >
       <ClinicFlowMobile
-        className={showMobileShell ? "flex" : "hidden"}
+        className={cn(
+          insetNarrow ? "md:flex" : "md:hidden",
+        )}
         mobileTab={mobileTab}
         onMobileTabChange={setMobileTab}
         selectedDate={selectedDate}
@@ -170,13 +205,16 @@ export default function ClinicFlowPage() {
         onUpdateAppointment={updateAppointment}
         scheduleToolbarProps={scheduleToolbarMobileProps}
         scheduleViewMode={scheduleViewMode}
-        onScheduleViewModeChange={setScheduleViewMode}
+        onScheduleViewModeChange={handleScheduleViewModeChange}
         filteredMatchDayOptions={filteredMatchDayOptions}
         onSelectFilteredCalendarDay={selectFilteredCalendarDay}
       />
 
       <ClinicFlowDesktop
-        className={showMobileShell ? "hidden" : "flex"}
+        className={cn(
+          "hidden",
+          insetNarrow ? "md:hidden" : "md:flex",
+        )}
         isSidebarVisible={isSidebarVisible}
         onToggleSidebarVisible={() => setIsSidebarVisible((v) => !v)}
         appointmentsForGrid={appointmentsForGrid}
@@ -189,7 +227,7 @@ export default function ClinicFlowPage() {
         onUpdateAppointment={updateAppointment}
         scheduleToolbarProps={scheduleToolbarDeskProps}
         scheduleViewMode={scheduleViewMode}
-        onScheduleViewModeChange={setScheduleViewMode}
+        onScheduleViewModeChange={handleScheduleViewModeChange}
         filteredMatchDayOptions={filteredMatchDayOptions}
         onSelectFilteredCalendarDay={selectFilteredCalendarDay}
       />

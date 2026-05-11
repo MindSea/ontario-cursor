@@ -15,6 +15,16 @@ import {
 import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
+import { CalendarTodayIcon } from "./calendar-today-icon";
+import {
+  SCHEDULE_BOTTOM_SHEET_BODY_OUTER_CLASS,
+  SCHEDULE_BOTTOM_SHEET_BODY_SCROLL_CLASS,
+  SCHEDULE_BOTTOM_SHEET_HEADER_CLASS,
+  SCHEDULE_BOTTOM_SHEET_TITLE_CLASS,
+  SCHEDULE_SHEET_OVERLAY_CLASS,
+  scheduleBottomSheetContentClass,
+} from "./schedule-bottom-sheet-frame";
+
 export type FilteredMatchDayOption = {
   dateKey: string;
   count: number;
@@ -55,17 +65,15 @@ export function ScheduleDateRow({
 }) {
   const selectedKey = format(selectedDate, "yyyy-MM-dd");
   const options = filteredMatchDayOptions ?? [];
-  const matchDayKeys = new Set(options.map((o) => o.dateKey));
   const showMatchDaysControl =
-    options.length > 0 &&
-    onSelectFilteredCalendarDay &&
-    (options.length > 1 || !matchDayKeys.has(selectedKey));
+    options.length > 0 && Boolean(onSelectFilteredCalendarDay);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const matchDaysTriggerRef = useRef<HTMLButtonElement>(null);
   const desktopPanelRef = useRef<HTMLDivElement>(null);
   const [desktopCoords, setDesktopCoords] = useState<PanelCoords | null>(null);
   const listboxId = useId();
+  const matchDaysDialogContentId = useId();
 
   const pickDay = useCallback(
     (dateKey: string) => {
@@ -130,7 +138,12 @@ export function ScheduleDateRow({
       id={fullBleed ? undefined : listboxId}
       role="listbox"
       aria-label="Days with matching appointments"
-      className="m-0 max-h-[min(60vh,20rem)] list-none overflow-y-auto overscroll-contain p-1.5 text-sm leading-snug"
+      className={cn(
+        "m-0 list-none p-1.5 text-sm leading-snug",
+        fullBleed
+          ? "max-h-none overflow-visible"
+          : "max-h-[min(60vh,20rem)] overflow-y-auto overscroll-contain",
+      )}
     >
       {options.map((opt) => {
         const isCurrent = opt.dateKey === selectedKey;
@@ -159,10 +172,13 @@ export function ScheduleDateRow({
     </ul>
   );
 
-  const matchDaysLabel =
+  /** Visible compact label; full sentence kept for assistive text. */
+  const matchDaysShortLabel =
+    options.length === 1 ? "1 matching day" : `${options.length} matching days`;
+  const matchDaysAriaLabel =
     options.length === 1
-      ? "1 day matches filters"
-      : `${options.length} days match filters`;
+      ? "1 day matches filters. Open list of matching days."
+      : `${options.length} days match filters. Open list of matching days.`;
 
   const desktopPortal =
     panelOpen &&
@@ -190,122 +206,137 @@ export function ScheduleDateRow({
     <>
       <div
         className={cn(
-          "sticky top-0 z-10 m-0 grid w-full shrink-0 grid-cols-[auto_1fr_auto] grid-rows-[auto_auto] border-b border-border/40 bg-background py-2.5",
-          fullBleed ? "px-0" : "px-2",
+          "sticky top-0 z-10 m-0 grid w-full shrink-0 grid-cols-3 items-center border-b border-border/40 bg-background",
+          fullBleed ? "min-h-10 px-1 py-1.5" : "min-h-11 px-2 py-2",
           className,
         )}
       >
-        <div className="col-start-1 row-span-2 flex items-center justify-start self-stretch">
+        <div className="flex min-w-0 items-center justify-self-start self-center">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-9 w-9 shrink-0"
+            className={cn("shrink-0", fullBleed ? "h-8 w-8" : "h-9 w-9")}
             aria-label="Previous day"
             onClick={() => onShiftDay(-1)}
           >
-            <ChevronLeft className="size-4" aria-hidden />
+            <ChevronLeft className={fullBleed ? "size-3.5" : "size-4"} aria-hidden />
           </Button>
         </div>
 
-        <div className="col-start-2 row-start-1 flex min-h-9 min-w-0 flex-col items-center justify-center gap-1.5 px-1.5 pt-1">
+        <div className="flex min-w-0 max-w-full flex-col items-center justify-center justify-self-center gap-0 px-1 text-center">
           <span
             className={cn(
-              "max-w-full truncate text-center font-medium",
+              "max-w-full truncate text-center font-medium leading-tight",
               textBody,
             )}
           >
             {formatTimelineDayLabel(selectedDate)}
           </span>
-        </div>
-
-        <div className="col-start-3 row-span-2 flex items-center justify-end self-stretch">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0"
-            aria-label="Next day"
-            onClick={() => onShiftDay(1)}
-          >
-            <ChevronRight className="size-4" aria-hidden />
-          </Button>
-        </div>
-
-        <div className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center justify-center gap-2.5 px-1.5 pb-1.5 pt-0.5">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 min-h-8 shrink-0 px-3 py-0 text-sm leading-snug font-medium text-foreground"
-            onClick={onGoToday}
-          >
-            Today
-          </Button>
           {showMatchDaysControl ? (
             fullBleed ? (
               <Button
                 type="button"
-                variant="outline"
+                variant="link"
                 size="sm"
                 ref={matchDaysTriggerRef}
-                className="h-8 min-h-8 shrink-0 gap-1.5 px-3 py-0 text-sm leading-snug font-medium text-foreground"
+                className={cn(
+                  "h-auto min-h-0 shrink px-1 py-0 text-xs font-normal no-underline leading-tight",
+                  textMeta,
+                  "text-muted-foreground hover:text-foreground",
+                )}
+                aria-label={matchDaysAriaLabel}
                 aria-expanded={panelOpen}
-                aria-controls={`${listboxId}-sheet-list`}
+                aria-controls={matchDaysDialogContentId}
                 aria-haspopup="dialog"
                 onClick={() => setPanelOpen((o) => !o)}
               >
-                <span>{matchDaysLabel}</span>
-                <ChevronDown
-                  className={cn(
-                    "size-3 shrink-0 opacity-70 transition-transform",
-                    panelOpen && "rotate-180",
-                  )}
-                  aria-hidden
-                />
+                <span className="inline-flex items-center gap-1">
+                  {matchDaysShortLabel}
+                  <ChevronDown
+                    className={cn(
+                      "size-3 shrink-0 opacity-70 transition-transform",
+                      panelOpen && "rotate-180",
+                    )}
+                    aria-hidden
+                  />
+                </span>
               </Button>
             ) : (
               <Button
                 type="button"
-                variant="outline"
+                variant="link"
                 size="sm"
                 ref={matchDaysTriggerRef}
-                className="h-8 min-h-8 shrink-0 gap-1.5 px-3 py-0 text-sm leading-snug font-medium text-foreground"
+                className={cn(
+                  "h-auto min-h-0 shrink px-1 py-0 text-xs font-normal no-underline",
+                  textMeta,
+                  "text-muted-foreground hover:text-foreground",
+                )}
+                aria-label={matchDaysAriaLabel}
                 aria-expanded={panelOpen}
                 aria-haspopup="listbox"
                 aria-controls={listboxId}
                 onClick={() => setPanelOpen((o) => !o)}
               >
-                <span>{matchDaysLabel}</span>
-                <ChevronDown
-                  className={cn(
-                    "size-3 shrink-0 opacity-70 transition-transform",
-                    panelOpen && "rotate-180",
-                  )}
-                  aria-hidden
-                />
+                <span className="inline-flex items-center gap-1">
+                  {matchDaysShortLabel}
+                  <ChevronDown
+                    className={cn(
+                      "size-3 shrink-0 opacity-70 transition-transform",
+                      panelOpen && "rotate-180",
+                    )}
+                    aria-hidden
+                  />
+                </span>
               </Button>
             )
           ) : null}
+        </div>
+
+        <div className="flex min-w-0 items-center justify-end justify-self-end gap-0 self-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn("shrink-0", fullBleed ? "h-8 w-8" : "h-9 w-9")}
+            aria-label="Go to today"
+            onClick={onGoToday}
+          >
+            <CalendarTodayIcon
+              className={cn("text-foreground", fullBleed ? "size-3.5" : "size-4")}
+            />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn("shrink-0", fullBleed ? "h-8 w-8" : "h-9 w-9")}
+            aria-label="Next day"
+            onClick={() => onShiftDay(1)}
+          >
+            <ChevronRight className={fullBleed ? "size-3.5" : "size-4"} aria-hidden />
+          </Button>
         </div>
       </div>
 
       {fullBleed ? (
         <Sheet open={panelOpen} onOpenChange={setPanelOpen}>
           <SheetContent
+            id={matchDaysDialogContentId}
             side="bottom"
-            overlayClassName="z-110"
-            className="z-120 max-h-[min(85dvh,28rem)] rounded-t-xl p-0 pt-3"
-            showCloseButton
+            overlayClassName={SCHEDULE_SHEET_OVERLAY_CLASS}
+            className={scheduleBottomSheetContentClass()}
           >
-            <SheetHeader className="shrink-0 px-5 pb-3 pt-1 text-left">
-              <SheetTitle>Days with matching appointments</SheetTitle>
+            <SheetHeader className={SCHEDULE_BOTTOM_SHEET_HEADER_CLASS}>
+              <SheetTitle className={SCHEDULE_BOTTOM_SHEET_TITLE_CLASS}>
+                Days with matching appointments
+              </SheetTitle>
             </SheetHeader>
-            <div
-              id={`${listboxId}-sheet-list`}
-              className="min-h-0 flex-1 px-5 pb-8 text-sm leading-snug text-foreground"
-            >
-              {matchDayList}
+            <div className={SCHEDULE_BOTTOM_SHEET_BODY_OUTER_CLASS}>
+              <div className={SCHEDULE_BOTTOM_SHEET_BODY_SCROLL_CLASS}>
+                {matchDayList}
+              </div>
             </div>
           </SheetContent>
         </Sheet>

@@ -15,7 +15,7 @@ import { formatAppointmentStage } from "./stage-display";
 
 function formatArrivalClock(iso: string): string {
   try {
-    return format(parseISO(iso), "h:mm a");
+    return format(parseISO(iso), "hh:mm a");
   } catch {
     return "—";
   }
@@ -48,7 +48,7 @@ export function DayAgendaList({
   filteredMatchDayOptions?: readonly FilteredMatchDayOption[];
   onSelectFilteredCalendarDay?: (dateKey: string) => void;
 }) {
-  const { arrived, expected } = partitionAgendaDay(items);
+  const { expected, inProgress, completed } = partitionAgendaDay(items);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -60,11 +60,11 @@ export function DayAgendaList({
 
   const rowButtonClass = (isSelected: boolean) =>
     cn(
-      "flex w-full min-w-0 flex-col gap-2 rounded-md border px-4 py-3.5 text-left transition-colors",
+      "flex w-full min-w-0 flex-col gap-2 rounded-md border px-4 py-3.5 text-left shadow-sm transition-colors",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
       isSelected
-        ? "border-border bg-muted shadow-sm ring-1 ring-inset ring-primary/35"
-        : "border-border/60 bg-background hover:bg-muted/40",
+        ? "border-border bg-muted shadow-md ring-1 ring-inset ring-primary/35"
+        : "border-border/70 bg-muted/35 hover:bg-muted/55",
     );
 
   const renderRow = (apt: Appointment) => {
@@ -78,28 +78,36 @@ export function DayAgendaList({
           className={cn(rowButtonClass(isSelected), "min-w-0 w-full")}
         >
           <div className="flex min-w-0 flex-col gap-1">
-            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1">
-              <span className={cn("min-w-0 font-medium", textBody)}>
-                {apt.patientName}
-              </span>
-              <span
-                className={cn(
-                  textMeta,
-                  "shrink-0 tabular-nums text-muted-foreground",
-                )}
-              >
-                {apt.time}
-                {apt.checkedInAt ? (
-                  <>
-                    <span className="text-muted-foreground/70" aria-hidden>
-                      {" "}
-                      ·{" "}
-                    </span>
-                    {formatArrivalClock(apt.checkedInAt)}
-                  </>
-                ) : null}
-              </span>
-            </div>
+            <span className={cn("min-w-0 font-medium", textBody)}>
+              {apt.patientName}
+            </span>
+            <p
+              className={cn(
+                "m-0 min-w-0 tabular-nums text-muted-foreground",
+                textMeta,
+              )}
+              aria-label={
+                apt.checkedInAt
+                  ? `Appointment ${apt.time}, arrival ${formatArrivalClock(apt.checkedInAt)}`
+                  : `Appointment ${apt.time}`
+              }
+            >
+              <span>{apt.time}</span>
+              {apt.checkedInAt ? (
+                <>
+                  <span className="text-muted-foreground/65" aria-hidden>
+                    {" "}
+                    ·{" "}
+                  </span>
+                  <span className="whitespace-nowrap">
+                    Arrival{" "}
+                    <time dateTime={apt.checkedInAt}>
+                      {formatArrivalClock(apt.checkedInAt)}
+                    </time>
+                  </span>
+                </>
+              ) : null}
+            </p>
             <span
               className={cn("line-clamp-2", textMeta, "text-muted-foreground")}
             >
@@ -119,11 +127,11 @@ export function DayAgendaList({
     );
   };
 
-  const section = (title: string, rows: Appointment[]) => (
-    <section className="flex flex-col gap-3">
+  const section = (title: string, rows: Appointment[], emptyHint: string) => (
+    <section className="flex flex-col gap-4">
       <h2
         className={cn(
-          "m-0 mb-1 text-sm font-semibold text-foreground",
+          "m-0 text-sm font-semibold text-foreground",
           textBody,
         )}
       >
@@ -131,10 +139,10 @@ export function DayAgendaList({
       </h2>
       {rows.length === 0 ? (
         <p className={cn("m-0 py-3", textMeta, "text-muted-foreground")}>
-          None for this day.
+          {emptyHint}
         </p>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col space-y-5">
           {rows.map((apt) => renderRow(apt))}
         </div>
       )}
@@ -172,11 +180,24 @@ export function DayAgendaList({
         <div
           className={cn(
             "flex flex-col gap-10 py-4",
-            fullBleed ? "px-4 pb-8" : "px-3 pb-6",
+            fullBleed ? "bg-muted/15 px-4 pb-8" : "px-3 pb-6",
           )}
         >
-          {section("Checked in", arrived)}
-          {section("Not yet arrived", expected)}
+          {section(
+            "Expected",
+            expected,
+            "No upcoming arrivals for this day.",
+          )}
+          {section(
+            "In progress",
+            inProgress,
+            "No patients checked in yet.",
+          )}
+          {section(
+            "Completed",
+            completed,
+            "No completed visits for this day.",
+          )}
         </div>
       </div>
     </div>

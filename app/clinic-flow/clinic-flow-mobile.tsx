@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { textBody, textMeta } from "@/lib/typography";
@@ -26,7 +27,12 @@ import {
   ScheduleViewToggle,
   type ScheduleViewMode,
 } from "./schedule-view-toggle";
-import { ScheduleToolbar, type ScheduleToolbarProps } from "./schedule-toolbar";
+import { Search } from "lucide-react";
+
+import {
+  ScheduleToolbar,
+  type ScheduleToolbarProps,
+} from "./schedule-toolbar";
 
 /** Mobile schedule + workspace tab panels: scroll inside each tab; chrome sits in-flow above (no spacer). */
 const MOBILE_TAB_PANEL_SCROLL_CLASS =
@@ -53,7 +59,7 @@ export type ClinicFlowMobileProps = {
   onScheduleViewModeChange: (mode: ScheduleViewMode) => void;
   filteredMatchDayOptions: readonly FilteredMatchDayOption[];
   onSelectFilteredCalendarDay: (dateKey: string) => void;
-  /** Merged onto the root wrapper (layout visibility from `useClinicFlowShellLayout`). */
+  /** Merged onto the root wrapper (shell visibility from `page.tsx` + `useClinicFlowShellLayout`). */
   className?: string;
 };
 
@@ -101,10 +107,22 @@ export function ClinicFlowMobile({
             <h1 className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight">
               {CLINIC_FLOW_PAGE_TITLE}
             </h1>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 shrink-0 rounded-lg"
+              aria-label="Open patient search"
+              onClick={() =>
+                scheduleToolbarProps.scheduleSheetsApiRef?.current?.openPatientSearch()
+              }
+            >
+              <Search className="size-5 text-foreground" aria-hidden />
+            </Button>
           </div>
           <TabsList
             variant="line"
-            className="grid min-h-11 w-full max-w-[100vw] shrink-0 grid-cols-2 gap-0 rounded-none border-0 border-b border-border/60 bg-background px-4 py-1.5 overflow-x-hidden"
+            className="grid min-h-10 w-full max-w-[100vw] shrink-0 grid-cols-2 gap-0 rounded-none border-0 border-b border-border/60 bg-background px-4 py-1 overflow-x-hidden"
           >
             <TabsTrigger
               value="schedule"
@@ -125,15 +143,19 @@ export function ClinicFlowMobile({
               Workspace
             </TabsTrigger>
           </TabsList>
+          <ScheduleToolbar
+            {...scheduleToolbarProps}
+            layout="panel"
+            panelSheetsOnly={mobileTab === "workspace"}
+          />
           {mobileTab === "schedule" ? (
             <>
-              <ScheduleToolbar {...scheduleToolbarProps} layout="panel" />
               <ScheduleDateRow
                 selectedDate={selectedDate}
                 onShiftDay={onShiftDay}
                 onGoToday={onGoToday}
                 fullBleed
-                className="w-full shrink-0 border-x-0 border-t border-b border-border/40 px-4"
+                className="w-full shrink-0 border-x-0 px-4"
                 filteredMatchDayOptions={filteredMatchDayOptions}
                 onSelectFilteredCalendarDay={onSelectFilteredCalendarDay}
               />

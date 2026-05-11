@@ -8,23 +8,57 @@ function sortByScheduledTimeThenId(a: Appointment, b: Appointment): number {
   return a.id.localeCompare(b.id);
 }
 
-/** Checked in (by arrival time) vs not yet arrived (by scheduled time). */
+function sortByArrivalThenId(a: Appointment, b: Appointment): number {
+  const ca = a.checkedInAt
+    ? new Date(a.checkedInAt).getTime()
+    : Number.MAX_SAFE_INTEGER;
+  const cb = b.checkedInAt
+    ? new Date(b.checkedInAt).getTime()
+    : Number.MAX_SAFE_INTEGER;
+  if (ca !== cb) return ca - cb;
+  return a.id.localeCompare(b.id);
+}
+
+/** Completed visits first by arrival time, then scheduled start. */
+function sortCompletedThenId(a: Appointment, b: Appointment): number {
+  const ta =
+    (a.checkedInAt ? new Date(a.checkedInAt).getTime() : null) ??
+    parseAppointmentScheduledStartMs(a) ??
+    0;
+  const tb =
+    (b.checkedInAt ? new Date(b.checkedInAt).getTime() : null) ??
+    parseAppointmentScheduledStartMs(b) ??
+    0;
+  if (ta !== tb) return ta - tb;
+  return a.id.localeCompare(b.id);
+}
+
+/**
+ * Day agenda sections: expected (not checked in), in progress (checked in, not
+ * completed), completed (`COMPLETED` stage — includes checkout even if arrival is unset).
+ */
 export function partitionAgendaDay(appointments: readonly Appointment[]): {
-  arrived: Appointment[];
   expected: Appointment[];
+  inProgress: Appointment[];
+  completed: Appointment[];
 } {
-  const arrived: Appointment[] = [];
   const expected: Appointment[] = [];
+  const inProgress: Appointment[] = [];
+  const completed: Appointment[] = [];
+
   for (const apt of appointments) {
-    if (apt.checkedInAt) arrived.push(apt);
-    else expected.push(apt);
+    if (apt.stage === "COMPLETED") {
+      completed.push(apt);
+    } else if (apt.checkedInAt) {
+      inProgress.push(apt);
+    } else {
+      expected.push(apt);
+    }
   }
-  arrived.sort((a, b) => {
-    const ca = new Date(a.checkedInAt!).getTime();
-    const cb = new Date(b.checkedInAt!).getTime();
-    if (ca !== cb) return ca - cb;
-    return a.id.localeCompare(b.id);
-  });
+
   expected.sort(sortByScheduledTimeThenId);
-  return { arrived, expected };
+  inProgress.sort(sortByArrivalThenId);
+  completed.sort(sortCompletedThenId);
+
+  return { expected, inProgress, completed };
 }
