@@ -91,7 +91,7 @@ export function MessagingInbox({
                   type="button"
                   onClick={() => onSelectConversation(c.id)}
                   className={cn(
-                    "flex w-full min-w-0 flex-col gap-0.5 px-4 py-3 text-left transition-colors",
+                    "flex w-full min-w-0 flex-col gap-0.5 px-3 py-3 text-left transition-colors md:px-4",
                     isActive
                       ? "bg-muted/80"
                       : "hover:bg-muted/45 active:bg-muted/55",

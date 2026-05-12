@@ -155,18 +155,28 @@ export function MessagingThread({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
       <div className="w-full shrink-0 bg-background">
-        <div className="flex min-h-10 shrink-0 items-center gap-1.5 border-b border-border/60 px-4 py-2 md:gap-2">
+        <div
+          className={cn(
+            "flex shrink-0 items-center gap-2 border-b border-border/60 bg-background",
+            /* Mobile: match Messaging chrome (h-12, px-3) so trigger/back and titles share one column grid. */
+            "max-md:h-12 max-md:px-3 max-md:py-0",
+            "md:min-h-10 md:px-4 md:py-2",
+            textBody,
+          )}
+        >
           {showMobileBack ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-8 shrink-0 md:hidden"
-              aria-label="Back to inbox"
-              onClick={onMobileBack}
-            >
-              <ChevronLeft className="size-4" aria-hidden />
-            </Button>
+            <div className="flex w-9 shrink-0 items-center justify-center md:hidden">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-9 shrink-0 rounded-lg"
+                aria-label="Back to inbox"
+                onClick={onMobileBack}
+              >
+                <ChevronLeft className="size-5 text-foreground" aria-hidden />
+              </Button>
+            </div>
           ) : null}
           <h2
             className={cn(
@@ -192,7 +202,7 @@ export function MessagingThread({
       </div>
 
       {!conversation ? (
-        <div className="flex flex-1 items-center justify-center px-4 py-12 text-center text-muted-foreground">
+        <div className="flex flex-1 items-center justify-center px-3 py-12 text-center text-muted-foreground md:px-4">
           <p className={cn("m-0 max-w-sm", textMeta)}>
             Choose a conversation from the list or start a new conversation.
           </p>
@@ -200,7 +210,7 @@ export function MessagingThread({
       ) : (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-3">
-            <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4">
+            <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-3 md:px-4">
               {threadMessages.map((m) => {
                 if (m.variant === "system") {
                   return (
@@ -324,7 +334,7 @@ export function MessagingThread({
 
           {needsMorePeople ? (
             <div className="w-full shrink-0 border-t border-border/60 bg-muted/25">
-              <div className="mx-auto w-full max-w-3xl px-4 py-3">
+              <div className="mx-auto w-full max-w-3xl px-3 py-3 md:px-4">
                 <p className={cn("m-0 text-muted-foreground", textMeta)}>
                   Add at least one other person to send a message.
                 </p>
@@ -334,10 +344,11 @@ export function MessagingThread({
 
           {canSend ? (
             <div className="w-full shrink-0 border-t border-border/60 bg-background">
-              <div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-4 py-3">
-                <label className="sr-only" htmlFor="messaging-composer">
-                  Message
-                </label>
+              <label className="sr-only" htmlFor="messaging-composer">
+                Message
+              </label>
+              {/* Grid keeps Send bottom-aligned with the textarea on iOS Safari (flex items-end can mis-measure textareas). */}
+              <div className="mx-auto grid w-full max-w-3xl grid-cols-[minmax(0,1fr)_auto] items-end gap-2 px-3 py-3 md:px-4">
                 <textarea
                   ref={composerRef}
                   id="messaging-composer"
@@ -358,7 +369,7 @@ export function MessagingThread({
                 />
                 <Button
                   type="button"
-                  className="shrink-0"
+                  className="shrink-0 self-end"
                   onClick={submitSend}
                 >
                   Send
@@ -367,7 +378,7 @@ export function MessagingThread({
             </div>
           ) : !needsMorePeople ? (
             <div className="w-full shrink-0 border-t border-border/60 bg-muted/30">
-              <div className="mx-auto w-full max-w-3xl px-4 py-3">
+              <div className="mx-auto w-full max-w-3xl px-3 py-3 md:px-4">
                 <p className={cn("m-0 text-muted-foreground", textMeta)}>
                   You can reply in conversations you are part of. New conversations
                   are started by navigators or PCPs.

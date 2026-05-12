@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { textMeta } from "@/lib/typography";
+import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 import type { Appointment } from "./types";
@@ -75,52 +75,46 @@ export function ClinicFlowDesktop({
       )}
     >
       <div className="sticky top-0 z-20 shrink-0 border-b border-border/50 bg-background">
+        {/* Same h-12 chrome as Messaging / AppShell: one row, patient search fits in-band (compact h-8). */}
         <div
           className={cn(
-            "pt-3 md:pt-4",
-            !isSidebarVisible &&
-              "mx-auto w-full max-w-6xl min-w-0 px-4 md:px-8",
+            "flex h-12 w-full min-w-0 shrink-0 items-center gap-2 md:gap-3",
+            textBody,
+            !isSidebarVisible
+              ? "mx-auto max-w-6xl px-4 md:px-8"
+              : "px-4 md:px-6",
           )}
         >
-          <div className="pb-2">
-            <div
-              className={cn(
-                "flex w-full min-w-0 items-center gap-3",
-                isSidebarVisible && "px-4 md:px-6",
-              )}
-            >
-              <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-2.5">
-                <SidebarTrigger className="shrink-0" />
-                <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">
-                  {CLINIC_FLOW_PAGE_TITLE}
-                </h1>
-              </div>
-              <SchedulePatientSearch
-                idPrefix={scheduleToolbarProps.idPrefix}
-                allAppointments={scheduleToolbarProps.allAppointments}
-                patientSearchQuery={scheduleToolbarProps.patientSearchQuery}
-                onPatientSearchQueryChange={
-                  scheduleToolbarProps.onPatientSearchQueryChange
-                }
-                onNavigateToAppointment={
-                  scheduleToolbarProps.onNavigateToAppointment
-                }
-                fullWidth={false}
-                size="compact"
-                className="min-w-0 w-[min(100%,18rem)] max-w-md shrink-0 md:w-72"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0 border-border/50"
-                aria-pressed={!isSidebarVisible}
-                onClick={onToggleSidebarVisible}
-              >
-                {isSidebarVisible ? "Hide schedule" : "Show schedule"}
-              </Button>
-            </div>
+          <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-2.5">
+            <SidebarTrigger className="shrink-0" />
+            <h1 className="min-w-0 truncate text-lg font-semibold leading-tight tracking-tight">
+              {CLINIC_FLOW_PAGE_TITLE}
+            </h1>
           </div>
+          <SchedulePatientSearch
+            idPrefix={scheduleToolbarProps.idPrefix}
+            allAppointments={scheduleToolbarProps.allAppointments}
+            patientSearchQuery={scheduleToolbarProps.patientSearchQuery}
+            onPatientSearchQueryChange={
+              scheduleToolbarProps.onPatientSearchQueryChange
+            }
+            onNavigateToAppointment={
+              scheduleToolbarProps.onNavigateToAppointment
+            }
+            fullWidth={false}
+            size="compact"
+            className="min-w-0 w-[min(100%,16rem)] max-w-md shrink-0 md:w-64"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0 border-border/50"
+            aria-pressed={!isSidebarVisible}
+            onClick={onToggleSidebarVisible}
+          >
+            {isSidebarVisible ? "Hide schedule" : "Show schedule"}
+          </Button>
         </div>
       </div>
 

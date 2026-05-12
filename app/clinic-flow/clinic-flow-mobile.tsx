@@ -99,12 +99,12 @@ export function ClinicFlowMobile({
         <div className="relative z-100 flex w-full min-w-full shrink-0 flex-col bg-background p-0">
           <div
             className={cn(
-              "flex h-12 w-full min-w-0 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-4",
+              "flex h-12 w-full min-w-0 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-3",
               textBody,
             )}
           >
             <SidebarTrigger className="shrink-0" />
-            <h1 className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight">
+            <h1 className="min-w-0 flex-1 truncate text-lg font-semibold leading-tight tracking-tight">
               {CLINIC_FLOW_PAGE_TITLE}
             </h1>
             <Button
@@ -122,7 +122,7 @@ export function ClinicFlowMobile({
           </div>
           <TabsList
             variant="line"
-            className="grid min-h-10 w-full max-w-[100vw] shrink-0 grid-cols-2 gap-0 rounded-none border-0 border-b border-border/60 bg-background px-4 py-1 overflow-x-hidden"
+            className="grid min-h-10 w-full max-w-[100vw] shrink-0 grid-cols-2 gap-0 rounded-none border-0 border-b border-border/60 bg-background px-3 py-1 overflow-x-hidden"
           >
             <TabsTrigger
               value="schedule"
@@ -155,7 +155,7 @@ export function ClinicFlowMobile({
                 onShiftDay={onShiftDay}
                 onGoToday={onGoToday}
                 fullBleed
-                className="w-full shrink-0 border-x-0 px-4"
+                className="w-full shrink-0 border-x-0 px-3"
                 filteredMatchDayOptions={filteredMatchDayOptions}
                 onSelectFilteredCalendarDay={onSelectFilteredCalendarDay}
               />
@@ -231,7 +231,7 @@ export function ClinicFlowMobile({
               <AmbientListenProvider key={selectedAppointment.id}>
                 <>
                   {/* Side gutters, air below sticky patient header, bottom margin above browser chrome. */}
-                  <div className="mb-32 flex w-full flex-col gap-4 px-4 pt-4">
+                  <div className="mb-32 flex w-full flex-col gap-4 px-3 pt-4 md:px-4">
                     <WorkspaceHuddleCard
                       key={selectedAppointment.id}
                       appointment={selectedAppointment}
@@ -281,7 +281,7 @@ export function ClinicFlowMobile({
                 </>
               </AmbientListenProvider>
             ) : (
-              <p className={cn("px-4 pb-8", textMeta)}>
+              <p className={cn("px-3 pb-8 md:px-4", textMeta)}>
                 No appointment selected.
               </p>
             )}

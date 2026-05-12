@@ -119,7 +119,7 @@ export function AppointmentMasterList({
         className={cn(
           "w-full",
           fullBleed && hideDateRow
-            ? "w-full px-4 py-4"
+            ? "w-full px-3 py-4 md:px-4"
             : fullBleed
               ? "min-h-0"
               : "min-h-0 flex-1 overflow-y-auto overscroll-contain",

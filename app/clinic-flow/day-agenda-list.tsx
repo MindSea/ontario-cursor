@@ -60,7 +60,7 @@ export function DayAgendaList({
 
   const rowButtonClass = (isSelected: boolean) =>
     cn(
-      "flex w-full min-w-0 flex-col gap-2 rounded-md border px-4 py-3.5 text-left shadow-sm transition-colors",
+      "flex w-full min-w-0 flex-col gap-2 rounded-md border px-3 py-3.5 text-left shadow-sm transition-colors md:px-4",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
       isSelected
         ? "border-border bg-muted shadow-md ring-1 ring-inset ring-primary/35"
@@ -180,7 +180,7 @@ export function DayAgendaList({
         <div
           className={cn(
             "flex flex-col gap-10 py-4",
-            fullBleed ? "bg-muted/15 px-4 pb-8" : "px-3 pb-6",
+            fullBleed ? "bg-muted/15 px-3 pb-8 md:px-4" : "px-3 pb-6",
           )}
         >
           {section(

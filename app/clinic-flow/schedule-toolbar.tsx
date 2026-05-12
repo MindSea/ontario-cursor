@@ -63,7 +63,7 @@ export type ScheduleToolbarProps = {
   patientSearchQuery: string;
   onPatientSearchQueryChange: (v: string) => void;
   onNavigateToAppointment: (appointment: Appointment) => void;
-  /** Omit horizontal padding when a parent supplies workspace alignment (`max-w-6xl` + `px-4 md:px-8`). */
+  /** Omit horizontal padding when a parent supplies workspace alignment (`max-w-6xl` + `px-3 md:px-8`). */
   insetWithWorkspace?: boolean;
   /** `mobileChrome`: title row + filter/search icon buttons opening sheets. `panel`: schedule panel chrome (inline from `md`, icons + sheets below). */
   layout?: "default" | "mobileChrome" | "panel";
@@ -667,7 +667,7 @@ export function ScheduleToolbar({
   }) => (
     <div
       className={cn(
-        "flex w-full min-w-0 shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-background px-4 py-3",
+        "flex w-full min-w-0 shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-background px-3 py-3",
         panelDetachSearchButton && "py-2",
         textBody,
       )}
@@ -805,9 +805,9 @@ export function ScheduleToolbar({
       <>
         <div
           className={cn(
-            "flex min-h-12 w-full min-w-0 shrink-0 items-center gap-3 border-b border-border/60 bg-background py-2",
+            "flex h-12 w-full min-w-0 shrink-0 items-center gap-3 border-b border-border/60 bg-background",
             textBody,
-            insetWithWorkspace ? "px-0" : "px-4",
+            insetWithWorkspace ? "px-0" : "px-3 md:px-4",
           )}
         >
           <div className="flex min-w-0 flex-1 items-center gap-3">

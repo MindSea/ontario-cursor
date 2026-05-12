@@ -61,7 +61,7 @@ export function WorkspacePinnedHeader({
         className,
       )}
     >
-      <div className="mx-auto w-full max-w-6xl min-w-0 px-4 pb-4 pt-4 md:px-8 md:pb-4 md:pt-6">
+      <div className="mx-auto w-full max-w-6xl min-w-0 px-3 pb-4 pt-4 md:px-8 md:pb-4 md:pt-6">
         <div className="table w-full table-fixed border-separate border-spacing-0">
           <div className="table-cell min-w-0 max-w-full align-top">
             <div className="flex w-full min-w-0 flex-col gap-2 md:gap-3">

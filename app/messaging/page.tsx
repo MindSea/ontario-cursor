@@ -334,32 +334,46 @@ export default function MessagingPage() {
           "md:sticky md:top-0 md:z-30",
         )}
       >
-        <div className="max-md:pt-[env(safe-area-inset-top)] md:pt-4">
-          <div className="md:pb-2">
-            <div
-              className={cn(
-                "flex w-full min-w-0 min-h-12 items-center gap-2 px-4 md:gap-2.5",
-                "md:mx-auto md:max-w-6xl md:px-8",
-                textBody,
-              )}
-            >
+        {/* Match AppShell / Clinic Flow: one h-12 bar; horizontal padding only (vertical = fixed height + items-center). */}
+        <div className="max-md:pt-[env(safe-area-inset-top)]">
+          <div
+            className={cn(
+              "flex h-12 w-full min-w-0 shrink-0 items-center gap-2 px-3",
+              "md:mx-auto md:max-w-6xl md:gap-2 md:px-8",
+              textBody,
+            )}
+          >
+            {/* Same 36px leading column as thread back control so titles and icons line up on mobile. */}
+            <div className="flex w-9 shrink-0 items-center justify-center">
               <SidebarTrigger className="shrink-0" />
-              <h1 className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight md:text-lg">
-                Messaging
-              </h1>
-              {showNewThread ? (
+            </div>
+            <h1 className="min-w-0 flex-1 truncate text-lg font-semibold leading-tight tracking-tight">
+              Messaging
+            </h1>
+            {showNewThread ? (
+              <>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="size-9 shrink-0 rounded-lg"
+                  className="size-9 shrink-0 rounded-lg md:hidden"
                   aria-label="New conversation"
                   onClick={startDraftThread}
                 >
                   <MessageSquarePlus className="size-5 text-foreground" aria-hidden />
                 </Button>
-              ) : null}
-            </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="hidden h-8 shrink-0 gap-1.5 px-3 md:inline-flex"
+                  onClick={startDraftThread}
+                >
+                  <MessageSquarePlus className="size-4 shrink-0" aria-hidden />
+                  New conversation
+                </Button>
+              </>
+            ) : null}
           </div>
         </div>
       </div>
@@ -368,7 +382,7 @@ export default function MessagingPage() {
         className={cn(
           "flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden",
           "max-md:px-0 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-          "py-3 md:py-4",
+          "max-md:pt-1 max-md:pb-3 md:py-4",
           "md:mx-auto md:max-w-6xl md:px-8",
         )}
       >

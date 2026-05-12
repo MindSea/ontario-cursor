@@ -91,7 +91,7 @@ export function MessagingParticipantHeader({
 
   return (
     <div className="w-full shrink-0 border-b border-border/40 bg-muted/20">
-      <div className="px-4 py-2.5">
+      <div className="px-3 py-2.5 md:px-4">
         <div className="flex w-full flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {orderedParticipants.map((ref) => {
@@ -101,11 +101,21 @@ export function MessagingParticipantHeader({
               <span
                 key={`${ref.kind}:${ref.personId}`}
                 className={cn(
-                  "inline-flex h-7 max-w-full items-center gap-0.5 rounded-full border border-border/60 bg-background pl-2.5 text-sm leading-none shadow-sm",
-                  removable ? "pr-0.5" : "pr-2.5",
+                  "inline-flex h-7 max-w-full items-center gap-0.5 rounded-full border border-border/60 bg-background text-sm leading-none shadow-sm",
+                  /* px-3 on shell for chips without X; for removable chips, put pl on the label
+                   * (not the outer flex) — iOS Safari can drop padding-left on the chip shell
+                   * when a ghost Button sits in the same inline-flex row. */
+                  removable ? "pr-0.5" : "px-3",
                 )}
               >
-                <span className="min-w-0 truncate font-medium">{name}</span>
+                <span
+                  className={cn(
+                    "min-w-0 truncate font-medium",
+                    removable && "pl-3",
+                  )}
+                >
+                  {name}
+                </span>
                 {showRemoveOnChip(ref) ? (
                   <Button
                     type="button"
