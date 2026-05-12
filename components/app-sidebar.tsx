@@ -33,8 +33,12 @@ const nav = [
 ] as const
 
 export function AppSidebar() {
-  const { isMobile, state } = useSidebar()
+  const { isMobile, state, setOpenMobile } = useSidebar()
   const collapsedDesktopRail = !isMobile && state === "collapsed"
+
+  const closeMobileSidebar = () => {
+    if (isMobile) setOpenMobile(false)
+  }
 
   return (
     <Sidebar
@@ -50,6 +54,7 @@ export function AppSidebar() {
       >
         <Link
           href="/clinic-flow"
+          onClick={closeMobileSidebar}
           className={cn(
             "block rounded-md outline-none ring-sidebar-ring focus-visible:ring-2",
             collapsedDesktopRail
@@ -85,7 +90,7 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild size="sm" tooltip={item.title}>
-                      <Link href={item.href}>
+                      <Link href={item.href} onClick={closeMobileSidebar}>
                         <Icon {...iconProps} aria-hidden />
                         <span>{item.title}</span>
                       </Link>

@@ -2,13 +2,17 @@
 
 import { format, parseISO } from "date-fns";
 import { ChevronLeft } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import {
+  SCHEDULE_BOTTOM_SHEET_TITLE_CLASS,
+} from "@/app/clinic-flow/schedule-bottom-sheet-frame";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -48,6 +52,9 @@ function isOwnMessage(m: Message, me: DirectoryPerson): boolean {
   return m.senderKind === me.kind && m.senderId === me.id;
 }
 
+const COMPOSER_MAX_HEIGHT_PX = 160;
+const COMPOSER_MIN_HEIGHT_PX = 40;
+
 export function MessagingThread({
   conversation,
   messages,
@@ -66,6 +73,7 @@ export function MessagingThread({
 }: MessagingThreadProps) {
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const directoryByKey = useMemo(
     () => buildDirectoryLookup(directory),
     [directory],
@@ -82,17 +90,32 @@ export function MessagingThread({
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [threadMessages.length, conversation?.id]);
 
+  useLayoutEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    const next = Math.min(
+      Math.max(el.scrollHeight, COMPOSER_MIN_HEIGHT_PX),
+      COMPOSER_MAX_HEIGHT_PX,
+    );
+    el.style.height = `${next}px`;
+  }, [draft, conversation?.id, canSend]);
+
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const threadKindLabel = conversation
     ? conversation.isDraft
-      ? "New thread"
+      ? "New conversation"
       : conversation.type === "direct"
         ? "Direct message"
         : "Group message"
     : "Select a conversation";
+
+  const canEditRoster =
+    rosterEditable && conversation != null && conversation.type === "group";
 
   const openEdit = (m: Message) => {
     if (m.deletedAt || m.variant === "system") return;
@@ -110,13 +133,10 @@ export function MessagingThread({
     setEditId(null);
   };
 
-  const confirmDelete = (id: string) => {
-    if (
-      typeof window !== "undefined" &&
-      window.confirm("Remove this message for everyone in the thread?")
-    ) {
-      onDeleteMessage(id);
-    }
+  const confirmDeleteMessage = () => {
+    if (!deleteTargetId) return;
+    onDeleteMessage(deleteTargetId);
+    setDeleteTargetId(null);
   };
 
   const submitSend = () => {
@@ -134,49 +154,53 @@ export function MessagingThread({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-3 py-2.5 md:px-4">
-        {showMobileBack ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9 shrink-0 md:hidden"
-            aria-label="Back to inbox"
-            onClick={onMobileBack}
+      <div className="w-full shrink-0 bg-background">
+        <div className="flex min-h-10 shrink-0 items-center gap-1.5 border-b border-border/60 px-4 py-2 md:gap-2">
+          {showMobileBack ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0 md:hidden"
+              aria-label="Back to inbox"
+              onClick={onMobileBack}
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+            </Button>
+          ) : null}
+          <h2
+            className={cn(
+              "min-w-0 flex-1 truncate text-base font-semibold leading-snug tracking-tight text-foreground",
+              textBody,
+            )}
           >
-            <ChevronLeft className="size-5" aria-hidden />
-          </Button>
+            {threadKindLabel}
+          </h2>
+        </div>
+
+        {conversation ? (
+          <MessagingParticipantHeader
+            conversation={conversation}
+            directory={directory}
+            currentUser={currentUser}
+            canManageRoster={canEditRoster}
+            onAddPerson={onAddParticipant ?? (() => {})}
+            onRemovePerson={onRemoveParticipant ?? (() => {})}
+            onDiscardDraft={onDiscardDraft}
+          />
         ) : null}
-        <h2
-          className={cn(
-            "min-w-0 flex-1 truncate text-base font-semibold leading-snug tracking-tight text-foreground",
-            textBody,
-          )}
-        >
-          {threadKindLabel}
-        </h2>
       </div>
 
       {!conversation ? (
         <div className="flex flex-1 items-center justify-center px-4 py-12 text-center text-muted-foreground">
           <p className={cn("m-0 max-w-sm", textMeta)}>
-            Choose a conversation from the list or start a new thread.
+            Choose a conversation from the list or start a new conversation.
           </p>
         </div>
       ) : (
         <>
-          <MessagingParticipantHeader
-            conversation={conversation}
-            directory={directory}
-            currentUser={currentUser}
-            canManageRoster={rosterEditable}
-            onAddPerson={onAddParticipant ?? (() => {})}
-            onRemovePerson={onRemoveParticipant ?? (() => {})}
-            onDiscardDraft={onDiscardDraft}
-          />
-
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 md:px-4">
-            <div className="mx-auto flex max-w-3xl flex-col gap-3">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-3">
+            <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4">
               {threadMessages.map((m) => {
                 if (m.variant === "system") {
                   return (
@@ -284,7 +308,7 @@ export function MessagingThread({
                             variant="ghost"
                             size="sm"
                             className="h-7 px-2 text-xs text-destructive hover:text-destructive"
-                            onClick={() => confirmDelete(m.id)}
+                            onClick={() => setDeleteTargetId(m.id)}
                           >
                             Delete
                           </Button>
@@ -299,22 +323,25 @@ export function MessagingThread({
           </div>
 
           {needsMorePeople ? (
-            <div className="shrink-0 border-t border-border/60 bg-muted/25 px-3 py-3 md:px-4">
-              <p className={cn("m-0 text-muted-foreground", textMeta)}>
-                Add at least one other person to send a message.
-              </p>
+            <div className="w-full shrink-0 border-t border-border/60 bg-muted/25">
+              <div className="mx-auto w-full max-w-3xl px-4 py-3">
+                <p className={cn("m-0 text-muted-foreground", textMeta)}>
+                  Add at least one other person to send a message.
+                </p>
+              </div>
             </div>
           ) : null}
 
           {canSend ? (
-            <div className="shrink-0 border-t border-border/60 bg-background p-3 md:px-4">
-              <div className="mx-auto flex max-w-3xl gap-2">
+            <div className="w-full shrink-0 border-t border-border/60 bg-background">
+              <div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-4 py-3">
                 <label className="sr-only" htmlFor="messaging-composer">
                   Message
                 </label>
                 <textarea
+                  ref={composerRef}
                   id="messaging-composer"
-                  rows={2}
+                  rows={1}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
@@ -325,13 +352,13 @@ export function MessagingThread({
                   }}
                   placeholder="Write a message…"
                   className={cn(
-                    "min-h-11 w-full min-w-0 resize-y rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30",
+                    "min-h-10 max-h-40 w-full min-w-0 resize-none overflow-y-auto rounded-lg border border-input bg-transparent px-2.5 py-2 text-base leading-snug outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30",
                     textBody,
                   )}
                 />
                 <Button
                   type="button"
-                  className="shrink-0 self-end"
+                  className="shrink-0"
                   onClick={submitSend}
                 >
                   Send
@@ -339,31 +366,70 @@ export function MessagingThread({
               </div>
             </div>
           ) : !needsMorePeople ? (
-            <div className="shrink-0 border-t border-border/60 bg-muted/30 px-3 py-3 md:px-4">
-              <p className={cn("m-0 text-muted-foreground", textMeta)}>
-                You can reply in threads you are part of. New threads are started
-                by navigators or PCPs.
-              </p>
+            <div className="w-full shrink-0 border-t border-border/60 bg-muted/30">
+              <div className="mx-auto w-full max-w-3xl px-4 py-3">
+                <p className={cn("m-0 text-muted-foreground", textMeta)}>
+                  You can reply in conversations you are part of. New conversations
+                  are started by navigators or PCPs.
+                </p>
+              </div>
             </div>
           ) : null}
         </>
       )}
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit message</DialogTitle>
+      <Dialog
+        open={deleteTargetId != null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetId(null);
+        }}
+      >
+        <DialogContent className="flex max-h-[min(90vh,24rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <DialogHeader className="gap-0 shrink-0 border-b border-border/50 px-4 pb-3 pt-4 text-left">
+            <DialogTitle className={SCHEDULE_BOTTOM_SHEET_TITLE_CLASS}>
+              Delete message?
+            </DialogTitle>
           </DialogHeader>
-          <textarea
-            value={editDraft}
-            onChange={(e) => setEditDraft(e.target.value)}
-            rows={4}
-            className={cn(
-              "min-h-20 w-full resize-y rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30",
-              textBody,
-            )}
-          />
-          <DialogFooter>
+          <div className="px-4 py-3">
+            <DialogDescription className="text-base leading-snug text-foreground">
+              This removes the message for everyone in the conversation. This
+              cannot be undone.
+            </DialogDescription>
+          </div>
+          <DialogFooter className="mt-0 shrink-0 gap-2 border-t border-border/50 px-4 py-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteTargetId(null)}
+            >
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={confirmDeleteMessage}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="flex max-h-[min(90vh,28rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <DialogHeader className="gap-0 shrink-0 border-b border-border/50 px-4 pb-3 pt-4 text-left">
+            <DialogTitle className={SCHEDULE_BOTTOM_SHEET_TITLE_CLASS}>
+              Edit message
+            </DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+            <textarea
+              value={editDraft}
+              onChange={(e) => setEditDraft(e.target.value)}
+              rows={4}
+              className={cn(
+                "min-h-24 w-full resize-y rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30",
+                textBody,
+              )}
+            />
+          </div>
+          <DialogFooter className="mt-0 shrink-0 gap-2 border-t border-border/50 px-4 py-3">
             <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
               Cancel
             </Button>

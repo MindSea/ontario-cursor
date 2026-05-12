@@ -13,7 +13,9 @@ import type { Conversation, DirectoryPerson, ParticipantRef } from "./types";
 import {
   buildDirectoryLookup,
   displayNameFor,
+  participantRefEquals,
   roleBadgeLabel,
+  toParticipantRef,
 } from "./utils";
 
 export type MessagingParticipantHeaderProps = {
@@ -70,28 +72,50 @@ export function MessagingParticipantHeader({
     return true;
   };
 
+  const meRef = useMemo(() => toParticipantRef(currentUser), [currentUser]);
+  const orderedParticipants = useMemo(() => {
+    const refs = [...conversation.participants];
+    refs.sort((a, b) => {
+      const aSelf = participantRefEquals(a, meRef);
+      const bSelf = participantRefEquals(b, meRef);
+      if (aSelf && !bSelf) return -1;
+      if (!aSelf && bSelf) return 1;
+      return displayNameFor(directoryByKey, a).localeCompare(
+        displayNameFor(directoryByKey, b),
+        undefined,
+        { sensitivity: "base" },
+      );
+    });
+    return refs;
+  }, [conversation.participants, directoryByKey, meRef]);
+
   return (
-    <div className="shrink-0 border-b border-border/40 bg-muted/20 px-3 py-2.5 md:px-4">
-      <div className="mx-auto flex max-w-3xl flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {conversation.participants.map((ref) => {
+    <div className="w-full shrink-0 border-b border-border/40 bg-muted/20">
+      <div className="px-4 py-2.5">
+        <div className="flex w-full flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {orderedParticipants.map((ref) => {
             const name = displayNameFor(directoryByKey, ref);
+            const removable = showRemoveOnChip(ref);
             return (
               <span
                 key={`${ref.kind}:${ref.personId}`}
-                className="inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-background py-0.5 pl-2.5 pr-1 text-sm shadow-sm"
+                className={cn(
+                  "inline-flex h-7 max-w-full items-center gap-0.5 rounded-full border border-border/60 bg-background pl-2.5 text-sm leading-none shadow-sm",
+                  removable ? "pr-0.5" : "pr-2.5",
+                )}
               >
                 <span className="min-w-0 truncate font-medium">{name}</span>
                 {showRemoveOnChip(ref) ? (
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
-                    className="size-6 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                    size="icon-xs"
+                    className="shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                     aria-label={`Remove ${name}`}
                     onClick={() => onRemovePerson(ref)}
                   >
-                    <X className="size-3.5" aria-hidden />
+                    <X className="size-3" aria-hidden />
                   </Button>
                 ) : null}
               </span>
@@ -179,6 +203,7 @@ export function MessagingParticipantHeader({
             </Button>
           ) : null}
         </div>
+      </div>
       </div>
     </div>
   );

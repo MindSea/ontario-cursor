@@ -3,7 +3,6 @@
 import { format, parseISO } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -14,10 +13,10 @@ export type MessagingInboxProps = {
   conversations: readonly Conversation[];
   messages: readonly Message[];
   directory: readonly DirectoryPerson[];
+  /** Used to list the signed-in person first in each thread title. */
+  currentUser: DirectoryPerson;
   activeId: string | null;
   onSelectConversation: (id: string) => void;
-  onNewThread: () => void;
-  showNewThreadButton: boolean;
 };
 
 function lastActivityMs(
@@ -59,10 +58,9 @@ export function MessagingInbox({
   conversations,
   messages,
   directory,
+  currentUser,
   activeId,
   onSelectConversation,
-  onNewThread,
-  showNewThreadButton,
 }: MessagingInboxProps) {
   const sorted = [...conversations].sort(
     (a, b) =>
@@ -72,18 +70,15 @@ export function MessagingInbox({
   const directoryByKey = buildDirectoryLookup(directory);
 
   return (
-    <div className="flex min-h-0 w-full min-w-0 flex-col border-border/60 md:w-[min(100%,22rem)] md:shrink-0 md:border-r">
-      <div className="flex shrink-0 flex-col gap-2 border-b border-border/60 p-3">
-        {showNewThreadButton ? (
-          <Button type="button" size="sm" variant="default" onClick={onNewThread}>
-            New thread
-          </Button>
-        ) : null}
-      </div>
+    <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden border-border/60 md:w-[min(100%,22rem)] md:shrink-0 md:border-r">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <ul className="m-0 list-none p-0">
           {sorted.map((c) => {
-            const title = formatThreadParticipantList(c, directoryByKey);
+            const title = formatThreadParticipantList(
+              c,
+              directoryByKey,
+              currentUser,
+            );
             const preview = previewSnippet(messages, c.id);
             const last = lastMessage(messages, c.id);
             const timeLabel = last
@@ -96,7 +91,7 @@ export function MessagingInbox({
                   type="button"
                   onClick={() => onSelectConversation(c.id)}
                   className={cn(
-                    "flex w-full min-w-0 flex-col gap-0.5 px-3 py-3 text-left transition-colors",
+                    "flex w-full min-w-0 flex-col gap-0.5 px-4 py-3 text-left transition-colors",
                     isActive
                       ? "bg-muted/80"
                       : "hover:bg-muted/45 active:bg-muted/55",

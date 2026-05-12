@@ -37,7 +37,7 @@ export function findDirectConversation(
   });
 }
 
-/** Navigators and PCPs may start new threads; patients may only reply in existing threads. */
+/** Navigators and PCPs may start new conversations; patients may only reply in existing ones. */
 export function canStartNewThread(actor: DirectoryPerson): boolean {
   return actor.kind === "navigator" || actor.kind === "pcp";
 }
@@ -67,16 +67,30 @@ export function displayNameFor(
 }
 
 /**
- * V1: no custom thread titles — show every participant, sorted by display name
- * (includes you so the list matches who is in the thread).
+ * No custom thread titles — list everyone in the thread. The signed-in person
+ * (viewer) is listed first when they are a participant; others follow A→Z by name.
  */
 export function formatThreadParticipantList(
   conv: Conversation,
   directoryByKey: Map<string, DirectoryPerson>,
+  viewer: DirectoryPerson | null,
 ): string {
-  const names = conv.participants
-    .map((p) => displayNameFor(directoryByKey, p))
-    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  const me = viewer ? toParticipantRef(viewer) : null;
+  const refs = [...conv.participants];
+  refs.sort((a, b) => {
+    if (me) {
+      const aSelf = participantRefEquals(a, me);
+      const bSelf = participantRefEquals(b, me);
+      if (aSelf && !bSelf) return -1;
+      if (!aSelf && bSelf) return 1;
+    }
+    return displayNameFor(directoryByKey, a).localeCompare(
+      displayNameFor(directoryByKey, b),
+      undefined,
+      { sensitivity: "base" },
+    );
+  });
+  const names = refs.map((p) => displayNameFor(directoryByKey, p));
   return names.length > 0 ? names.join(", ") : "Conversation";
 }
 
