@@ -8,27 +8,19 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
+import { ROOM_NONE, WORKSPACE_ROOM_OPTIONS_CONCRETE } from "./room-options";
 import type { Appointment, AppointmentStage } from "./types";
 import {
   APPOINTMENT_STAGE_ORDER,
   formatAppointmentStage,
 } from "./stage-display";
-
-const WORKSPACE_ROOM_OPTIONS = [
-  "RM 1",
-  "RM 2",
-  "RM 3",
-  "RM 4",
-  "RM 5",
-  "LAB 1",
-  "WAIT",
-] as const;
 
 export function WorkspacePinnedHeader({
   appointment,
@@ -163,11 +155,17 @@ export function WorkspacePinnedHeader({
                       <SelectValue placeholder="Room" />
                     </SelectTrigger>
                     <SelectContent className="z-1000">
-                      {WORKSPACE_ROOM_OPTIONS.map((room) => (
+                      {/* Concrete rooms first, then a visual divider,
+                       * then the `NONE` sentinel. The divider makes
+                       * "no room assigned" read as a distinct choice
+                       * rather than a 7th room in the list. */}
+                      {WORKSPACE_ROOM_OPTIONS_CONCRETE.map((room) => (
                         <SelectItem key={room} value={room}>
                           {room}
                         </SelectItem>
                       ))}
+                      <SelectSeparator />
+                      <SelectItem value={ROOM_NONE}>{ROOM_NONE}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -65,8 +65,16 @@ const DEMO_PROFILES: readonly PatientProfileAggregate[] = [
         relationship: "Daughter",
         phone: "(416) 555-0160",
       },
-      pharmacyOfChoice: "Main Street Pharmacy",
-      primaryInsurance: "Medicare with supplemental (Humana)",
+      pharmacy: {
+        name: "Main Street Pharmacy",
+        address: "845 Bloor St W\nToronto, ON M6G 1M1",
+        phone: "(416) 555-1234",
+      },
+      primaryInsurance: {
+        carrier: "Medicare + Humana Supplemental",
+        memberId: "MED-1A2B-3C4D",
+        groupNumber: "HUM-12345",
+      },
     },
   }),
   row({
@@ -147,8 +155,16 @@ const DEMO_PROFILES: readonly PatientProfileAggregate[] = [
         relationship: "Son",
         phone: "(416) 555-0121",
       },
-      pharmacyOfChoice: "CVS Pharmacy",
-      primaryInsurance: "Medicare Advantage",
+      pharmacy: {
+        name: "CVS Pharmacy",
+        address: "200 Spadina Ave\nToronto, ON M5T 2C2",
+        phone: "(416) 555-2200",
+      },
+      primaryInsurance: {
+        carrier: "Medicare Advantage",
+        memberId: "MA-0473-8821",
+        groupNumber: "MA-7782",
+      },
     },
   }),
   row({
@@ -191,8 +207,16 @@ const DEMO_PROFILES: readonly PatientProfileAggregate[] = [
         relationship: "Spouse",
         phone: "(416) 555-0235",
       },
-      pharmacyOfChoice: "Walgreens",
-      primaryInsurance: "Medicare",
+      pharmacy: {
+        name: "Walgreens",
+        address: "50 Roncesvalles Ave\nToronto, ON M6R 2K3",
+        phone: "(416) 555-2350",
+      },
+      primaryInsurance: {
+        carrier: "Medicare",
+        memberId: "1AB-CD2-EF34",
+        groupNumber: "",
+      },
     },
   }),
   row({
@@ -228,14 +252,18 @@ const DEMO_PROFILES: readonly PatientProfileAggregate[] = [
       homeAddress: "2000 Jane St\nToronto, ON M9M 1A1",
       primaryLanguage: "English",
       translationRequired: false,
-      contactMethodPreference: "portal",
+      contactMethodPreference: "email",
       emergencyContact: {
         name: "James Wilson",
         relationship: "Self",
         phone: "(416) 555-0310",
       },
-      pharmacyOfChoice: "",
-      primaryInsurance: "Medicare with Medigap",
+      pharmacy: { name: "", address: "", phone: "" },
+      primaryInsurance: {
+        carrier: "Medicare + Medigap Plan G",
+        memberId: "MED-2W3X-4Y5Z",
+        groupNumber: "MG-44518",
+      },
     },
   }),
   row({
@@ -278,8 +306,16 @@ const DEMO_PROFILES: readonly PatientProfileAggregate[] = [
         relationship: "Daughter",
         phone: "(416) 555-0405",
       },
-      pharmacyOfChoice: "Community Health Pharmacy",
-      primaryInsurance: "Medicare and Medicaid",
+      pharmacy: {
+        name: "Community Health Pharmacy",
+        address: "650 Dundas St E\nToronto, ON M5A 2B4",
+        phone: "(416) 555-4050",
+      },
+      primaryInsurance: {
+        carrier: "Medicare (dual-eligible with Medicaid)",
+        memberId: "DE-7788-9911",
+        groupNumber: "MCD-22411",
+      },
     },
   }),
   row({
@@ -318,8 +354,16 @@ const DEMO_PROFILES: readonly PatientProfileAggregate[] = [
       translationRequired: false,
       contactMethodPreference: "phone",
       emergencyContact: { name: "", relationship: "", phone: "" },
-      pharmacyOfChoice: "Rite Aid",
-      primaryInsurance: "Medicare with supplemental (Anthem)",
+      pharmacy: {
+        name: "Rite Aid",
+        address: "100 Finch Ave W\nToronto, ON M2N 7H7",
+        phone: "(416) 555-5060",
+      },
+      primaryInsurance: {
+        carrier: "Medicare + Anthem Supplemental",
+        memberId: "ANT-8821-1107",
+        groupNumber: "ANT-66039",
+      },
     },
   }),
   row({
@@ -374,8 +418,16 @@ const DEMO_PROFILES: readonly PatientProfileAggregate[] = [
         relationship: "Spouse",
         phone: "(416) 555-0608",
       },
-      pharmacyOfChoice: "Costco Pharmacy",
-      primaryInsurance: "Medicare Advantage (Cigna)",
+      pharmacy: {
+        name: "Costco Pharmacy",
+        address: "42 Heath St E\nToronto, ON M4T 1S5",
+        phone: "(416) 555-6070",
+      },
+      primaryInsurance: {
+        carrier: "Cigna Medicare Advantage",
+        memberId: "CIG-3009-2241",
+        groupNumber: "CIG-90218",
+      },
     },
   }),
   row({
@@ -417,8 +469,16 @@ const DEMO_PROFILES: readonly PatientProfileAggregate[] = [
         relationship: "Daughter",
         phone: "(416) 555-0708",
       },
-      pharmacyOfChoice: "CVS Pharmacy",
-      primaryInsurance: "Medicare",
+      pharmacy: {
+        name: "CVS Pharmacy",
+        address: "280 The East Mall\nEtobicoke, ON M9B 3X3",
+        phone: "(416) 555-7080",
+      },
+      primaryInsurance: {
+        carrier: "Medicare",
+        memberId: "MED-DM01-7733",
+        groupNumber: "",
+      },
     },
   }),
   row({
@@ -446,8 +506,16 @@ const DEMO_PROFILES: readonly PatientProfileAggregate[] = [
         relationship: "Son",
         phone: "(416) 555-0810",
       },
-      pharmacyOfChoice: "Main Street Pharmacy",
-      primaryInsurance: "Medicare",
+      pharmacy: {
+        name: "Main Street Pharmacy",
+        address: "50 Front St E\nToronto, ON M5E 1B3",
+        phone: "(416) 555-8090",
+      },
+      primaryInsurance: {
+        carrier: "Medicare",
+        memberId: "MED-HP02-4408",
+        groupNumber: "",
+      },
     },
   }),
   row({
@@ -483,8 +551,16 @@ const DEMO_PROFILES: readonly PatientProfileAggregate[] = [
       translationRequired: false,
       contactMethodPreference: "phone",
       emergencyContact: { name: "", relationship: "", phone: "" },
-      pharmacyOfChoice: "CVS Pharmacy",
-      primaryInsurance: "Medicare",
+      pharmacy: {
+        name: "CVS Pharmacy",
+        address: "251 Spadina Ave\nToronto, ON M5T 2E2",
+        phone: "(416) 555-9091",
+      },
+      primaryInsurance: {
+        carrier: "Medicare",
+        memberId: "MED-EH03-8852",
+        groupNumber: "",
+      },
     },
   }),
   row({
@@ -525,8 +601,16 @@ const DEMO_PROFILES: readonly PatientProfileAggregate[] = [
         relationship: "Spouse",
         phone: "(416) 555-0992",
       },
-      pharmacyOfChoice: "Shoppers Drug Mart",
-      primaryInsurance: "Medicare Advantage",
+      pharmacy: {
+        name: "Shoppers Drug Mart",
+        address: "200 Jarvis St\nToronto, ON M5B 2L7",
+        phone: "(416) 555-9920",
+      },
+      primaryInsurance: {
+        carrier: "Medicare Advantage",
+        memberId: "MA-JO04-1126",
+        groupNumber: "MA-7890",
+      },
     },
   }),
 ];

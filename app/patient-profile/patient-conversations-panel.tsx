@@ -132,13 +132,21 @@ export function PatientConversationsPanel({
   );
 
   return (
-    /* Outer wrapper mirrors /messaging's body: capped at max-w-6xl, with
-     * `px-8 + py-4` so the inbox + thread group lands at the same width as
-     * the page version. Mobile is unchanged (full bleed). */
+    /* Outer wrapper mirrors /messaging's body padding so the thread frame
+     * lands at the same offsets in both surfaces:
+     *   - Desktop: capped at max-w-6xl with `px-8 + py-4`, same as
+     *     /messaging.
+     *   - Mobile: `max-md:pt-1 max-md:pb-3` matches /messaging's body
+     *     (a 4px top breathing slice between the dialog's tab nav and the
+     *     thread chrome). Without it the thread header sat flush against
+     *     the tab nav's border on mobile, which made the back chevron in
+     *     the thread title row feel cramped versus /messaging.
+     *     Horizontal padding stays 0 — the inbox/thread group is
+     *     full-bleed on mobile in both surfaces. */
     <div
       className={cn(
         "flex min-h-0 w-full min-w-0 flex-1 flex-col",
-        "max-md:px-0 max-md:py-0",
+        "max-md:px-0 max-md:pt-1 max-md:pb-3",
         "md:mx-auto md:max-w-6xl md:px-8 md:py-4",
       )}
     >

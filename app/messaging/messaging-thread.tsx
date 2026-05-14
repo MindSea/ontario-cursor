@@ -180,7 +180,13 @@ export function MessagingThread({
             "flex shrink-0 items-center gap-2 border-b border-border/60 bg-background",
             /* Mobile: match Messaging chrome (h-12, px-3) so trigger/back and titles share one column grid. */
             "max-md:h-12 max-md:px-3 max-md:py-0",
-            "md:min-h-10 md:px-4 md:py-2",
+            /* Desktop: 53px tall so this row aligns 1:1 with the inbox's
+             * pinned "New conversation" header. The inbox header's box
+             * is `py-2 (16px) + h-9 button (36px) + 1px border = 53px`,
+             * and because `box-sizing: border-box` puts our 1px `border-b`
+             * inside `min-height`, we need 13 * 0.25rem + 1px to match.
+             * Mobile is untouched (h-12 already). */
+            "md:min-h-[calc(var(--spacing)*13+1px)] md:px-4 md:py-2",
             textBody,
           )}
         >

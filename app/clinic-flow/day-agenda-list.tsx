@@ -6,6 +6,7 @@ import { format, parseISO } from "date-fns";
 import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
+import { appointmentHasRoom } from "./room-options";
 import type { Appointment } from "./types";
 import { MutedTagBadge, toTitleCaseTagLabel } from "./muted-tag-badge";
 import { partitionAgendaDay } from "./schedule-agenda";
@@ -115,9 +116,15 @@ export function DayAgendaList({
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            <MutedTagBadge surface="onMutedParent" className="tabular-nums">
-              {toTitleCaseTagLabel(apt.room)}
-            </MutedTagBadge>
+            {/* Hide the room chip when the visit has no concrete room
+             * assignment (the `NONE` sentinel or a blank string). A
+             * literal "NONE" tag in the agenda list adds noise without
+             * adding information. */}
+            {appointmentHasRoom(apt) ? (
+              <MutedTagBadge surface="onMutedParent" className="tabular-nums">
+                {toTitleCaseTagLabel(apt.room)}
+              </MutedTagBadge>
+            ) : null}
             <MutedTagBadge surface="onMutedParent">
               {formatAppointmentStage(apt.stage)}
             </MutedTagBadge>

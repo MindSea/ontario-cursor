@@ -130,9 +130,16 @@ export function InlineEditableText({
            * `field-sizing: content`, then becomes a scroll area once the
            * content exceeds `max-h`. Matches the note field in TaskAddForm
            * (and the medication-notes textarea elsewhere) for consistency.
+           *
+           * Font-size is intentionally inherited from the parent context
+           * (no hardcoded `text-sm`). The display mode renders inline
+           * text that inherits as well, so swapping into edit mode keeps
+           * the same font size — task notes (parent `text-sm`) stay
+           * `text-sm`, contact-admin rows (parent `text-base`) stay
+           * `text-base`.
            */
           className={cn(
-            "block w-full resize-none rounded-md border border-input bg-transparent px-2 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
+            "block w-full resize-none rounded-md border border-input bg-transparent px-2 py-1 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
             "min-h-8 max-h-[min(40vh,18rem)] overflow-y-auto field-sizing-content",
             editClassName,
           )}
@@ -185,7 +192,13 @@ export function InlineEditableText({
             }
       }
       className={cn(
-        "block whitespace-pre-wrap rounded-sm px-1 py-0.5 -mx-1 -my-0.5",
+        // `whitespace-pre-wrap` preserves newlines and wraps at natural
+        // break opportunities (spaces, hyphens). `wrap-break-word`
+        // (`overflow-wrap: break-word`) is the safety net for tokens
+        // with NO natural breaks — long emails (`a.b@c.example.com`),
+        // URLs, and big IDs — so they wrap to the next line instead of
+        // overflowing the container.
+        "block whitespace-pre-wrap wrap-break-word rounded-sm px-1 py-0.5 -mx-1 -my-0.5",
         !readOnly &&
           "cursor-text hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none",
         className,

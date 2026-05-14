@@ -5,6 +5,7 @@ import { useEffect, useMemo } from "react";
 import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
+import { appointmentHasRoom } from "./room-options";
 import type { Appointment, AppointmentStage } from "./types";
 import { MutedTagBadge, toTitleCaseTagLabel } from "./muted-tag-badge";
 import { formatAppointmentStage } from "./stage-display";
@@ -22,7 +23,20 @@ import type { FilteredMatchDayOption } from "./schedule-date-row";
 import { ScheduleDateRow } from "./schedule-date-row";
 
 /**
- * Care Management: abbreviated when the visit card is narrow; full title-case label when wider.
+ * Stage label for the master-list visit tile.
+ *
+ * Most stages render their canonical title-case label and rely on CSS
+ * `truncate` to handle narrow tiles. `CARE MANAGEMENT` is the lone
+ * exception: at narrow widths we swap to the well-known healthcare
+ * abbreviation `Care Mgmt` (same word, shortened) so the tile shows
+ * a real label instead of `Care Manag…`. At wider widths we fall back
+ * to the full title-case label.
+ *
+ * Why no abbreviation for `COMPLETED`: previously this rendered as
+ * `Done` at narrow widths, which read as a different status from the
+ * `Completed` shown in the Stage selector and the day agenda. The
+ * canonical label `Completed` is the same length as `Care Mgmt` and
+ * fits the narrow tile, so consistency beats abbreviation here.
  */
 function StageBadgeLabel({ stage }: { stage: AppointmentStage }) {
   if (stage === "CARE MANAGEMENT") {
@@ -31,16 +45,6 @@ function StageBadgeLabel({ stage }: { stage: AppointmentStage }) {
         <span className="block truncate @min-[11rem]/visit:hidden">
           Care Mgmt
         </span>
-        <span className="hidden truncate @min-[11rem]/visit:inline">
-          {formatAppointmentStage(stage)}
-        </span>
-      </>
-    );
-  }
-  if (stage === "COMPLETED") {
-    return (
-      <>
-        <span className="block truncate @min-[11rem]/visit:hidden">Done</span>
         <span className="hidden truncate @min-[11rem]/visit:inline">
           {formatAppointmentStage(stage)}
         </span>
@@ -257,14 +261,19 @@ export function AppointmentMasterList({
                         "@min-[10.5rem]/visit:flex-row @min-[10.5rem]/visit:flex-wrap @min-[10.5rem]/visit:items-start",
                       )}
                     >
-                      <MutedTagBadge
-                        surface="onMutedParent"
-                        className="max-w-full self-start tabular-nums"
-                      >
-                        <span className="block truncate">
-                          {toTitleCaseTagLabel(block.appointment.room)}
-                        </span>
-                      </MutedTagBadge>
+                      {/* Hide the room chip when there's no concrete
+                       * assignment — a "NONE" tile in the dense master
+                       * list reads as broken data. */}
+                      {appointmentHasRoom(block.appointment) ? (
+                        <MutedTagBadge
+                          surface="onMutedParent"
+                          className="max-w-full self-start tabular-nums"
+                        >
+                          <span className="block truncate">
+                            {toTitleCaseTagLabel(block.appointment.room)}
+                          </span>
+                        </MutedTagBadge>
+                      ) : null}
                       <MutedTagBadge
                         surface="onMutedParent"
                         className="max-w-full self-start"

@@ -11,10 +11,9 @@ import {
 } from "react";
 import { format, parse } from "date-fns";
 
-import type { Appointment } from "./types";
-
 import { cn } from "@/lib/utils";
 
+import { useAppointmentsStore } from "./appointments-store";
 import { shiftCalendarDay } from "./calendar-utils";
 import { ClinicFlowDesktop } from "./clinic-flow-desktop";
 import { ClinicFlowMobile } from "./clinic-flow-mobile";
@@ -22,7 +21,7 @@ import { filterAppointmentsForScheduleToolbar } from "./schedule-appointment-fil
 import type { BuildingPresenceBucket } from "./schedule-building-filter";
 import { buildingPresenceBucketForAppointment } from "./schedule-building-filter";
 import { DEMO_ACCOUNT_NAVIGATOR } from "./schedule-constants";
-import { createClinicFlowInitialState } from "./create-clinic-flow-initial-state";
+import type { Appointment } from "./types";
 import { useClinicFlowShellLayout } from "./use-clinic-flow-shell-layout";
 import type { FilteredMatchDayOption } from "./schedule-date-row";
 import type { ScheduleViewMode } from "./schedule-view-toggle";
@@ -33,10 +32,13 @@ import { usePatientProfileUrlState } from "@/app/patient-profile/use-patient-pro
 const SCHEDULE_VIEW_MODE_STORAGE_KEY = "clinic-flow.scheduleViewMode";
 
 export default function ClinicFlowPage() {
-  const initial = useMemo(() => createClinicFlowInitialState(), []);
-  const [appointments, setAppointments] = useState(initial.appointments);
+  /* Lifted state: appointments + updateAppointment live in the shared
+   * AppointmentsStoreProvider so the patient profile detail can edit
+   * stage/room and see the changes here (and vice versa). */
+  const { appointments, initialSelectedId, updateAppointment } =
+    useAppointmentsStore();
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
-  const [selectedId, setSelectedId] = useState(initial.selectedId);
+  const [selectedId, setSelectedId] = useState(initialSelectedId);
   const [mobileTab, setMobileTab] = useState<"schedule" | "workspace">(
     "schedule",
   );
@@ -118,15 +120,6 @@ export default function ClinicFlowPage() {
   const selectedAppointment = useMemo(
     () => appointments.find((a) => a.id === selectedId) ?? null,
     [appointments, selectedId],
-  );
-
-  const updateAppointment = useCallback(
-    (id: string, patch: Partial<Appointment>) => {
-      setAppointments((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, ...patch } : a)),
-      );
-    },
-    [],
   );
 
   const shiftSelectedDate = (deltaDays: number) => {

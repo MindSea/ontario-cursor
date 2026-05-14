@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { parse } from "date-fns";
 
+import { appointmentHasRoom } from "@/app/clinic-flow/room-options";
 import { buildSeedAppointments } from "@/app/clinic-flow/seed-appointments";
 import type { Appointment } from "@/app/clinic-flow/types";
 import {
@@ -73,6 +74,21 @@ export function appointmentSortKey(apt: Appointment): number {
   return at.getTime();
 }
 
+/**
+ * Whether the visit should surface its room in summary chips.
+ *
+ * Two reasons we suppress the room badge:
+ *   - The stage doesn't usefully imply a room (`PREVISIT` is pre-arrival
+ *     and `COMPLETED` is post-visit, where the room is no longer
+ *     informative).
+ *   - The visit has no room assigned (`NONE` sentinel or blank).
+ *
+ * Stage-only check is separate from assignment-only check
+ * (`appointmentHasRoom`) so callers can compose them differently —
+ * the room *selector* in the detail header still renders for any
+ * stage; only summary chips use this combined gate.
+ */
 export function appointmentShowsRoom(apt: Appointment): boolean {
-  return apt.stage !== "PREVISIT" && apt.stage !== "COMPLETED";
+  if (apt.stage === "PREVISIT" || apt.stage === "COMPLETED") return false;
+  return appointmentHasRoom(apt);
 }

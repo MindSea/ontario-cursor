@@ -33,12 +33,8 @@ import {
   X,
 } from "lucide-react";
 
-import { formatAppointmentStage } from "@/app/clinic-flow/stage-display";
-import type { Appointment } from "@/app/clinic-flow/types";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { NotesTextarea } from "@/components/ui/notes-textarea";
 import {
@@ -52,17 +48,12 @@ import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 import { patientAgeFromDateOfBirth } from "./age";
-import {
-  appointmentShowsRoom,
-  appointmentSortKey,
-  usePatientProfileClinicMessagingDemo,
-} from "./patient-profile-demo-data";
+import { PatientAppointmentsPanel } from "./patient-appointments-panel";
 import { PatientConversationsPanel } from "./patient-conversations-panel";
 import {
   PATIENT_PROFILE_SECTIONS,
   type PatientProfileSection,
 } from "./patient-profile-sections";
-import { appointmentsForPatient } from "./queries";
 import type {
   LongTermPanelTask,
   LongTermTaskSource,
@@ -70,9 +61,11 @@ import type {
   PatientCondition,
   PatientContactAdmin,
   PatientContactMethodPreference,
+  PatientEmergencyContact,
+  PatientPharmacy,
+  PatientPrimaryInsurance,
   PatientProfileAggregate,
 } from "./types";
-import { useDirtyRegistration } from "./use-patient-profile-dirty";
 import { DatePicker } from "@/components/ui/date-picker";
 import { InlineEditableText } from "./inline-editable-text";
 
@@ -242,9 +235,18 @@ const CONTACT_PREFS: readonly PatientContactMethodPreference[] = [
   "phone",
   "sms",
   "email",
-  "portal",
-  "other",
 ];
+
+/**
+ * Explicit display labels. Title-casing via `charAt(0).toUpperCase() +
+ * slice(1)` produces `"Sms"` for the SMS option which reads as a typo;
+ * map values to their preferred capitalization here instead.
+ */
+const CONTACT_PREF_LABEL: Record<PatientContactMethodPreference, string> = {
+  phone: "Phone",
+  sms: "SMS",
+  email: "Email",
+};
 
 export type PatientProfileViewProps = {
   aggregate: PatientProfileAggregate;
@@ -267,13 +269,14 @@ export function PatientProfileView({
 }: PatientProfileViewProps) {
   const { summary, demographics, panel, contactAdmin: initialContact } =
     aggregate;
-  const [contact, setContact] = useState<PatientContactAdmin>(initialContact);
   /**
-   * Baseline that the dirty check compares against. Initialized from the seed and
-   * advanced whenever the user saves so the close prompt stops firing after a save.
+   * Contact / admin state. Edits commit per-field (no global Save) — each
+   * `InlineEditableText` blur / Enter calls `setContact`, mirroring how
+   * panel-management tasks commit individually. Closing the dialog discards
+   * unsaved edits implicitly (matches the demo's task semantics). The dirty
+   * system intentionally does NOT track this section anymore.
    */
-  const [savedBaseline, setSavedBaseline] =
-    useState<PatientContactAdmin>(initialContact);
+  const [contact, setContact] = useState<PatientContactAdmin>(initialContact);
   /** Toast supports an optional action button (e.g. Undo) attached for ~6s. */
   type ToastAction = { label: string; onClick: () => void };
   type ToastState = { id: number; message: string; action?: ToastAction };
@@ -283,13 +286,6 @@ export function PatientProfileView({
    * Appointments ⇄ Contact) preserves in-flight edits. Dialog remounts on patient
    * change via the `key={patientId}` prop, which resets this back to the seed. */
   const [tasks, setTasks] = useState<readonly LongTermPanelTask[]>(panel.tasks);
-
-  /** Demo: stringify compare matches the seed shape and stays cheap for one form. */
-  const contactDirty = useMemo(
-    () => JSON.stringify(contact) !== JSON.stringify(savedBaseline),
-    [contact, savedBaseline],
-  );
-  useDirtyRegistration("contact-admin", contactDirty);
 
   /* Toasts auto-dismiss after ~6s when the toast carries an action (Undo),
    * 2.4s when it's a transient confirmation. */
@@ -338,14 +334,7 @@ export function PatientProfileView({
     nav.scrollLeft = Math.max(0, Math.min(target, max));
   }, [activeSection]);
 
-  const demo = usePatientProfileClinicMessagingDemo();
   const patientId = summary.patientId;
-
-  const profileAppointments = useMemo(() => {
-    return [...appointmentsForPatient(demo.appointments, patientId)].sort(
-      (a, b) => appointmentSortKey(b) - appointmentSortKey(a),
-    );
-  }, [demo.appointments, patientId]);
 
   const dobParsed = parse(
     demographics.dateOfBirth,
@@ -497,31 +486,43 @@ export function PatientProfileView({
       <section
         aria-label={activeLabel}
         /* Overflow behavior is per-section:
-         * - Panel / Appointments / Contact: `overflow-y-auto` so the centered
-         *   max-w-3xl column scrolls vertically inside the section.
-         *   `scrollbar-gutter: stable` reserves the scrollbar gutter even
-         *   when content doesn't overflow, so adding content that pushes
-         *   past one viewport (e.g. expanding the Add task form) doesn't
-         *   shrink the inner width and shift the centered column left.
-         *   (Tailwind 4.3 ships `scrollbar-gutter-stable`; we're on 4.2.4,
-         *   so the arbitrary-property escape hatch emits the rule.)
-         * - Conversations: full-bleed inbox + thread split. Each pane
-         *   scrolls internally (matches /messaging), so the section itself
-         *   is `overflow-hidden`. */
+         * - Panel / Contact: `overflow-y-auto` so the centered max-w-3xl
+         *   column scrolls vertically inside the section. `scrollbar-
+         *   gutter: stable` reserves the scrollbar gutter even when
+         *   content doesn't overflow, so adding content that pushes
+         *   past one viewport (e.g. expanding the Add task form)
+         *   doesn't shrink the inner width and shift the centered
+         *   column left. (Tailwind 4.3 ships `scrollbar-gutter-stable`;
+         *   we're on 4.2.4, so the arbitrary-property escape hatch
+         *   emits the rule.)
+         * - Conversations / Appointments: full-bleed list + detail
+         *   split. Each pane scrolls internally (matches /messaging
+         *   and /clinic-flow), so the section itself is
+         *   `overflow-hidden`. */
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-col bg-background",
-          activeSection === "conversations"
+          activeSection === "conversations" ||
+            activeSection === "appointments"
             ? "overflow-hidden"
             : "overflow-y-auto overscroll-contain [scrollbar-gutter:stable]",
         )}
       >
-        {/* Centered column for Panel / Appointments / Contact. Hidden via
-         * `display: none` (not unmounted) when Conversations is active so
-         * any in-flight contact-form / task edits stay alive. */}
+        {/* Centered column for Panel / Contact. Hidden via `display: none`
+         * (not unmounted) when a full-bleed section is active so any
+         * in-flight contact-form / task edits stay alive across switches.
+         *
+         * Contact / admin uses a wider cap (`max-w-5xl`) than Panel
+         * management (`max-w-3xl`): the 2-column card layout has real
+         * horizontal demand (3-line address blocks were wrapping at
+         * 3xl), whereas Panel management is a vertical task list that
+         * reads better at a narrower line length. */}
         <div
           className={cn(
-            "mx-auto w-full max-w-3xl flex-1 px-4 py-5 md:px-6 md:py-6",
-            activeSection === "conversations" && "hidden",
+            "mx-auto w-full flex-1 px-4 py-5 md:px-6 md:py-6",
+            activeSection === "contact" ? "max-w-5xl" : "max-w-3xl",
+            (activeSection === "conversations" ||
+              activeSection === "appointments") &&
+              "hidden",
           )}
         >
           {activeSection === "panel" ? (
@@ -531,38 +532,20 @@ export function PatientProfileView({
               setTasks={setTasks}
               showToast={showToast}
             />
-          ) : activeSection === "appointments" ? (
-            <AppointmentsSection
-              appointments={profileAppointments}
-              onOpenClinicFlow={() =>
-                showToast("Open this visit in Clinic Flow (demo).")
-              }
-            />
           ) : activeSection === "contact" ? (
-            <ContactAdminForm
-              value={contact}
-              onChange={setContact}
-              onSave={() => {
-                /* Advance baseline so the form is no longer dirty;
-                 * a subsequent close attempt skips the discard prompt. */
-                setSavedBaseline(contact);
-                showToast("Contact details saved (demo — not persisted).");
-              }}
-            />
+            <ContactAdminForm value={contact} onChange={setContact} />
           ) : null}
         </div>
 
-        {/* Conversations is always mounted (hidden via `display: none` when
-         * another section is active) so the panel's UI state (active
-         * conversation, mobile two-pane) survives tab switches inside the
-         * dialog. The panel reads from the shared `MessagingStoreProvider`,
-         * so messages sent here are also visible at `/messaging`.
+        {/* Conversations + Appointments are always mounted (hidden via
+         * `display: none` when another section is active) so each panel's
+         * UI state (selection, mobile two-pane) survives tab switches.
+         * Both panels read from app-wide stores so their data stays in
+         * sync with /messaging and /clinic-flow respectively.
          *
-         * The panel owns its own outer padding (matching `/messaging`'s
-         * `max-w-6xl + px-8 + py-4`), so we deliberately don't add any
-         * here. Padding here would stack with the panel's, leaving the
-         * thread column wider than `/messaging` and adding visible extra
-         * whitespace around message bubbles + composer. */}
+         * Each panel owns its own outer padding (matching the source
+         * surface's `max-w-6xl + px-8 + py-4`), so we deliberately don't
+         * add any here. */}
         <div
           className={cn(
             "flex min-h-0 flex-1 flex-col",
@@ -570,6 +553,14 @@ export function PatientProfileView({
           )}
         >
           <PatientConversationsPanel patientId={patientId} />
+        </div>
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            activeSection !== "appointments" && "hidden",
+          )}
+        >
+          <PatientAppointmentsPanel patientId={patientId} />
         </div>
       </section>
 
@@ -893,95 +884,6 @@ function PanelManagementSection({
   );
 }
 
-function AppointmentsSection({
-  appointments,
-  onOpenClinicFlow,
-}: {
-  appointments: readonly Appointment[];
-  onOpenClinicFlow: () => void;
-}) {
-  if (appointments.length === 0) {
-    return (
-      <p className={cn("m-0 text-muted-foreground", textMeta)}>
-        No appointments for this patient in the rolling demo schedule.
-      </p>
-    );
-  }
-  return (
-    <div className="space-y-4">
-      <ul className="m-0 list-none space-y-2 p-0">
-        {appointments.map((apt) => (
-          <li key={apt.id}>
-            <ProfileAppointmentRow
-              appointment={apt}
-              onOpenClinicFlow={onOpenClinicFlow}
-            />
-          </li>
-        ))}
-      </ul>
-      <p className={cn("m-0 text-muted-foreground", textMeta)}>
-        Visit detail (huddle, previsit, etc.) can reuse the Clinic Flow
-        workspace when you pick a row — same appointment payload as today.
-      </p>
-    </div>
-  );
-}
-
-function ProfileAppointmentRow({
-  appointment,
-  onOpenClinicFlow,
-}: {
-  appointment: Appointment;
-  onOpenClinicFlow: () => void;
-}) {
-  const day = parse(appointment.date, "yyyy-MM-dd", new Date());
-  const dateLabel = format(day, "MMM d, yyyy");
-  const showRoom = appointmentShowsRoom(appointment);
-
-  return (
-    <div
-      className={cn(
-        "rounded-md border border-border/60 bg-muted/10 px-3 py-2.5",
-        textBody,
-      )}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium tabular-nums text-foreground">
-              {dateLabel}
-            </span>
-            <span className="tabular-nums text-muted-foreground">
-              {appointment.time}
-            </span>
-            <Badge variant="secondary" className="font-normal">
-              {formatAppointmentStage(appointment.stage)}
-            </Badge>
-          </div>
-          <p className={cn("m-0 text-foreground", textBody)}>
-            <span className="text-muted-foreground">Reason: </span>
-            {appointment.reason}
-          </p>
-          {showRoom && appointment.room ? (
-            <p className={cn("m-0 text-muted-foreground", textMeta)}>
-              Room {appointment.room}
-            </p>
-          ) : null}
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="shrink-0"
-          onClick={onOpenClinicFlow}
-        >
-          Clinic Flow
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function TaskRow({
   task,
   today,
@@ -1275,18 +1177,25 @@ function TaskAddForm({
   );
 }
 
+/**
+ * Contact / Admin section.
+ *
+ * Layout: six titled subsections (Contact info, Home address,
+ * Language & communication, Emergency contact, Pharmacy, Primary insurance).
+ * Each row is a `[label · value]` pair where the value is click-to-edit,
+ * matching the panel-management task title / note pattern.
+ *
+ * Saving: per-field auto-commit on blur / Enter (no global Save button,
+ * no dirty registration). Closing the dialog discards in-flight edits
+ * implicitly — same semantics as task editing.
+ */
 function ContactAdminForm({
   value,
   onChange,
-  onSave,
 }: {
   value: PatientContactAdmin;
   onChange: (next: PatientContactAdmin) => void;
-  onSave: () => void;
 }) {
-  const uid = useId();
-  const idp = (s: string) => `${uid}-${s}`;
-
   const patch = useCallback(
     (partial: Partial<PatientContactAdmin>) => {
       onChange({ ...value, ...partial });
@@ -1295,7 +1204,7 @@ function ContactAdminForm({
   );
 
   const patchEmergency = useCallback(
-    (partial: Partial<PatientContactAdmin["emergencyContact"]>) => {
+    (partial: Partial<PatientEmergencyContact>) => {
       onChange({
         ...value,
         emergencyContact: { ...value.emergencyContact, ...partial },
@@ -1304,183 +1213,353 @@ function ContactAdminForm({
     [onChange, value],
   );
 
-  const fieldClass = "space-y-1.5";
-  const inputClass = "h-9";
+  const patchPharmacy = useCallback(
+    (partial: Partial<PatientPharmacy>) => {
+      onChange({ ...value, pharmacy: { ...value.pharmacy, ...partial } });
+    },
+    [onChange, value],
+  );
+
+  const patchInsurance = useCallback(
+    (partial: Partial<PatientPrimaryInsurance>) => {
+      onChange({
+        ...value,
+        primaryInsurance: { ...value.primaryInsurance, ...partial },
+      });
+    },
+    [onChange, value],
+  );
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className={fieldClass}>
-          <label className={cn("block", textMeta)} htmlFor={idp("mobile")}>
-            Mobile phone
-          </label>
-          <Input
-            id={idp("mobile")}
-            className={inputClass}
-            value={value.mobilePhone}
-            onChange={(e) => patch({ mobilePhone: e.target.value })}
-          />
-        </div>
-        <div className={fieldClass}>
-          <label className={cn("block", textMeta)} htmlFor={idp("home")}>
-            Home phone
-          </label>
-          <Input
-            id={idp("home")}
-            className={inputClass}
-            value={value.homePhone}
-            onChange={(e) => patch({ homePhone: e.target.value })}
-          />
-        </div>
-      </div>
-      <div className={fieldClass}>
-        <label className={cn("block", textMeta)} htmlFor={idp("email")}>
-          Email
-        </label>
-        <Input
-          id={idp("email")}
-          className={inputClass}
-          type="email"
-          value={value.email}
-          onChange={(e) => patch({ email: e.target.value })}
-        />
-      </div>
-      <div className={fieldClass}>
-        <label className={cn("block", textMeta)} htmlFor={idp("address")}>
-          Home address
-        </label>
-        <textarea
-          id={idp("address")}
-          rows={3}
-          value={value.homeAddress}
-          onChange={(e) => patch({ homeAddress: e.target.value })}
-          className={cn(
-            "min-h-[5rem] w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
-            textBody,
-          )}
-        />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className={fieldClass}>
-          <label className={cn("block", textMeta)} htmlFor={idp("lang")}>
-            Primary language
-          </label>
-          <Input
-            id={idp("lang")}
-            className={inputClass}
-            value={value.primaryLanguage}
-            onChange={(e) => patch({ primaryLanguage: e.target.value })}
-          />
-        </div>
-        <div className={cn(fieldClass, "flex flex-col justify-end")}>
-          <div className="flex items-center gap-2 pb-2">
-            <Checkbox
-              id={idp("translate")}
-              checked={value.translationRequired}
-              onCheckedChange={(s) =>
-                patch({ translationRequired: s === true })
-              }
+    <div
+      className={cn(
+        /* Mobile: two columns stack vertically. md+: side-by-side. */
+        "space-y-6",
+        "md:grid md:grid-cols-2 md:gap-x-10 md:space-y-0",
+      )}
+    >
+      <ContactColumn>
+        <ContactSection title="Contact information">
+          <ContactRow label="Mobile">
+            <InlineEditableText
+              value={value.mobilePhone}
+              onChange={(v) => patch({ mobilePhone: v })}
+              emptyAffordance="+ Add mobile phone"
+              ariaLabel="Mobile phone"
             />
-            <label
-              htmlFor={idp("translate")}
-              className={cn("cursor-pointer", textBody)}
-            >
-              Translation required
-            </label>
-          </div>
-        </div>
-      </div>
-      <div className={fieldClass}>
-        <span className={cn("block", textMeta)}>
-          Contact method preference
-        </span>
-        <Select
-          value={value.contactMethodPreference}
-          onValueChange={(v) =>
-            patch({
-              contactMethodPreference: v as PatientContactMethodPreference,
-            })
-          }
-        >
-          <SelectTrigger className={cn(inputClass, "w-full sm:max-w-xs")}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {CONTACT_PREFS.map((pref) => (
-              <SelectItem key={pref} value={pref}>
-                {pref.charAt(0).toUpperCase() + pref.slice(1)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="rounded-md border border-border/60 bg-muted/10 p-3">
-        <h3 className={cn("mb-3 font-medium", textBody)}>Emergency contact</h3>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className={fieldClass}>
-            <label className={cn("block", textMeta)} htmlFor={idp("ec-name")}>
-              Name
-            </label>
-            <Input
-              id={idp("ec-name")}
-              className={inputClass}
+          </ContactRow>
+          <ContactRow label="Home">
+            <InlineEditableText
+              value={value.homePhone}
+              onChange={(v) => patch({ homePhone: v })}
+              emptyAffordance="+ Add home phone"
+              ariaLabel="Home phone"
+            />
+          </ContactRow>
+          <ContactRow label="Email">
+            <InlineEditableText
+              value={value.email}
+              onChange={(v) => patch({ email: v })}
+              emptyAffordance="+ Add email"
+              ariaLabel="Email"
+            />
+          </ContactRow>
+        </ContactSection>
+
+        <ContactSection title="Home address">
+          <ContactRow label="Address">
+            <InlineEditableText
+              multiline
+              value={value.homeAddress}
+              onChange={(v) => patch({ homeAddress: v })}
+              emptyAffordance="+ Add home address"
+              ariaLabel="Home address"
+            />
+          </ContactRow>
+        </ContactSection>
+
+        <ContactSection title="Language & communication">
+          <ContactRow label="Primary language">
+            <InlineEditableText
+              value={value.primaryLanguage}
+              onChange={(v) => patch({ primaryLanguage: v })}
+              emptyAffordance="+ Add primary language"
+              ariaLabel="Primary language"
+            />
+          </ContactRow>
+          <ContactRow label="Translation required">
+            <ToggleYesNo
+              value={value.translationRequired}
+              onChange={(v) => patch({ translationRequired: v })}
+              ariaLabel="Translation required"
+            />
+          </ContactRow>
+          <ContactRow label="Contact method">
+            <ContactMethodSelect
+              value={value.contactMethodPreference}
+              onChange={(v) => patch({ contactMethodPreference: v })}
+            />
+          </ContactRow>
+        </ContactSection>
+      </ContactColumn>
+
+      <ContactColumn>
+        <ContactSection title="Emergency contact">
+          <ContactRow label="Name">
+            <InlineEditableText
               value={value.emergencyContact.name}
-              onChange={(e) => patchEmergency({ name: e.target.value })}
+              onChange={(v) => patchEmergency({ name: v })}
+              emptyAffordance="+ Add name"
+              ariaLabel="Emergency contact name"
             />
-          </div>
-          <div className={fieldClass}>
-            <label className={cn("block", textMeta)} htmlFor={idp("ec-rel")}>
-              Relationship
-            </label>
-            <Input
-              id={idp("ec-rel")}
-              className={inputClass}
+          </ContactRow>
+          <ContactRow label="Relationship">
+            <InlineEditableText
               value={value.emergencyContact.relationship}
-              onChange={(e) =>
-                patchEmergency({ relationship: e.target.value })
-              }
+              onChange={(v) => patchEmergency({ relationship: v })}
+              emptyAffordance="+ Add relationship"
+              ariaLabel="Emergency contact relationship"
             />
-          </div>
-          <div className={fieldClass}>
-            <label className={cn("block", textMeta)} htmlFor={idp("ec-phone")}>
-              Phone
-            </label>
-            <Input
-              id={idp("ec-phone")}
-              className={inputClass}
+          </ContactRow>
+          <ContactRow label="Phone">
+            <InlineEditableText
               value={value.emergencyContact.phone}
-              onChange={(e) => patchEmergency({ phone: e.target.value })}
+              onChange={(v) => patchEmergency({ phone: v })}
+              emptyAffordance="+ Add phone"
+              ariaLabel="Emergency contact phone"
             />
-          </div>
-        </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className={fieldClass}>
-          <label className={cn("block", textMeta)} htmlFor={idp("pharmacy")}>
-            Pharmacy of choice
-          </label>
-          <Input
-            id={idp("pharmacy")}
-            className={inputClass}
-            value={value.pharmacyOfChoice}
-            onChange={(e) => patch({ pharmacyOfChoice: e.target.value })}
-          />
-        </div>
-        <div className={fieldClass}>
-          <label className={cn("block", textMeta)} htmlFor={idp("insurance")}>
-            Primary insurance
-          </label>
-          <Input
-            id={idp("insurance")}
-            className={inputClass}
-            value={value.primaryInsurance}
-            onChange={(e) => patch({ primaryInsurance: e.target.value })}
-          />
-        </div>
-      </div>
-      <Button type="button" onClick={onSave}>
-        Save contact / admin
-      </Button>
+          </ContactRow>
+        </ContactSection>
+
+        <ContactSection title="Pharmacy">
+          <ContactRow label="Name">
+            <InlineEditableText
+              value={value.pharmacy.name}
+              onChange={(v) => patchPharmacy({ name: v })}
+              emptyAffordance="+ Add pharmacy name"
+              ariaLabel="Pharmacy name"
+            />
+          </ContactRow>
+          <ContactRow label="Address">
+            <InlineEditableText
+              multiline
+              value={value.pharmacy.address}
+              onChange={(v) => patchPharmacy({ address: v })}
+              emptyAffordance="+ Add pharmacy address"
+              ariaLabel="Pharmacy address"
+            />
+          </ContactRow>
+          <ContactRow label="Phone">
+            <InlineEditableText
+              value={value.pharmacy.phone}
+              onChange={(v) => patchPharmacy({ phone: v })}
+              emptyAffordance="+ Add pharmacy phone"
+              ariaLabel="Pharmacy phone"
+            />
+          </ContactRow>
+        </ContactSection>
+
+        <ContactSection title="Primary insurance">
+          <ContactRow label="Carrier">
+            <InlineEditableText
+              value={value.primaryInsurance.carrier}
+              onChange={(v) => patchInsurance({ carrier: v })}
+              emptyAffordance="+ Add carrier"
+              ariaLabel="Insurance carrier"
+            />
+          </ContactRow>
+          <ContactRow label="Member ID">
+            <InlineEditableText
+              value={value.primaryInsurance.memberId}
+              onChange={(v) => patchInsurance({ memberId: v })}
+              emptyAffordance="+ Add member ID"
+              ariaLabel="Insurance member ID"
+            />
+          </ContactRow>
+          <ContactRow label="Group number">
+            <InlineEditableText
+              value={value.primaryInsurance.groupNumber}
+              onChange={(v) => patchInsurance({ groupNumber: v })}
+              emptyAffordance="+ Add group number"
+              ariaLabel="Insurance group number"
+            />
+          </ContactRow>
+        </ContactSection>
+      </ContactColumn>
     </div>
+  );
+}
+
+/**
+ * One of the two visual columns in the Contact / Admin layout. A simple
+ * vertical stack of bordered `ContactSection` cards. No cross-section
+ * grid is needed anymore — each section owns its own grid with a fixed
+ * label-column width (see `ContactSection`) so values left-align
+ * consistently within the column AND across the two columns.
+ */
+function ContactColumn({ children }: { children: ReactNode }) {
+  return <div className="space-y-4">{children}</div>;
+}
+
+/**
+ * A titled, bordered subsection inside a `ContactColumn`.
+ *
+ * Layout choices:
+ *   - `grid-cols-[10rem_1fr]` is a **fixed** label-column width, not
+ *     `max-content`. This is what guarantees the user-visible promise
+ *     that "the space between label and inputted field is the same
+ *     between the two columns": both columns render with the same
+ *     10rem label track, so values land at identical x positions in
+ *     each column. 10rem comfortably fits the widest label in the
+ *     form ("Translation required" ~9.5rem) with a small buffer.
+ *   - `items-baseline` aligns the label baseline to the value's
+ *     first-line baseline (single-line or multi-line), which reads as
+ *     "label centered on the first line of the value" for our text
+ *     sizes.
+ *   - `gap-x-4` is the gutter between label and value; matched by
+ *     the second visual column for free since both use this same
+ *     ContactSection wrapper.
+ *   - Border + padding turn each section into a discrete card so the
+ *     groupings (Contact information / Home address / etc.) read as
+ *     distinct units.
+ */
+function ContactSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-lg border border-border/60 bg-background p-4",
+      )}
+    >
+      {/* `mb-3` (12px) on the title pushes the `dl` away from it.
+       *
+       * We can't use `space-y-*` on the parent here: the `dl` carries
+       * `m-0` to neutralize its UA top/bottom margin, and in Tailwind v4
+       * `m-0` is emitted as `margin: 0` which overrides the `margin-top`
+       * that `space-y-*` adds to siblings. Using an explicit `mb-*` on
+       * the heading sidesteps that cascade conflict entirely. */}
+      <h3 className={cn("m-0 mb-3 font-medium", textBody)}>{title}</h3>
+      <dl
+        className={cn(
+          "m-0 grid grid-cols-[10rem_1fr] items-baseline gap-x-4 gap-y-2",
+        )}
+      >
+        {children}
+      </dl>
+    </section>
+  );
+}
+
+/**
+ * Single `[label · value]` row inside a `ContactSection`'s `<dl>`.
+ * `<dt>` lands in the section grid's 10rem label column; `<dd>` fills
+ * the rest. `whitespace-nowrap` keeps labels on one line so they read
+ * cleanly in the fixed-width track.
+ */
+function ContactRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <dt
+        className={cn(
+          "text-muted-foreground whitespace-nowrap",
+          textMeta,
+        )}
+      >
+        {label}
+      </dt>
+      <dd className={cn("m-0 min-w-0", textBody)}>{children}</dd>
+    </>
+  );
+}
+
+/**
+ * Click-to-toggle Yes / No control. Visually mirrors the
+ * `InlineEditableText` display mode (text + hover background) so the
+ * row reads the same as text rows in the section.
+ */
+function ToggleYesNo({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: boolean;
+  onChange: (next: boolean) => void;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      aria-label={ariaLabel}
+      aria-pressed={value}
+      className={cn(
+        "-mx-1 -my-0.5 cursor-pointer rounded-sm px-1 py-0.5 text-left hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none",
+      )}
+    >
+      {value ? "Yes" : "No"}
+    </button>
+  );
+}
+
+/**
+ * Contact method preference selector.
+ *
+ * Renders a `SelectTrigger` styled to sit unobtrusively in the row
+ * (transparent background, no border, hover background to signal it's
+ * clickable). Uses `size="sm"` rather than overriding the height — the
+ * default `data-[size=*]:h-*` data-variant utilities have higher
+ * cascade precedence than plain `h-auto`, so a manual `h-auto` override
+ * silently doesn't apply and the trigger ends up rendering at a height
+ * that broke the original click target. Letting `size="sm"` set h-7
+ * keeps the click target reliable.
+ */
+function ContactMethodSelect({
+  value,
+  onChange,
+}: {
+  value: PatientContactMethodPreference;
+  onChange: (next: PatientContactMethodPreference) => void;
+}) {
+  return (
+    <Select
+      value={value}
+      onValueChange={(v) => onChange(v as PatientContactMethodPreference)}
+    >
+      <SelectTrigger
+        size="sm"
+        aria-label="Contact method"
+        className={cn(
+          "-mx-1 border-0 bg-transparent shadow-none",
+          "hover:bg-muted/40",
+          "focus:ring-0 focus-visible:ring-0 focus-visible:border-transparent",
+          textBody,
+        )}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      {/* `z-1000` lifts the portaled `SelectContent` above the patient
+       * profile Dialog (z-50). Without it the dropdown opens but renders
+       * behind the dialog and appears to do nothing. Every other Select
+       * in the patient profile (Stage, Room, task Stage) uses the same
+       * fix — see e.g. `StageChip`. */}
+      <SelectContent className="z-1000">
+        {CONTACT_PREFS.map((pref) => (
+          <SelectItem key={pref} value={pref}>
+            {CONTACT_PREF_LABEL[pref]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

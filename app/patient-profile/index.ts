@@ -10,6 +10,8 @@ export type {
   PatientGender,
   PatientId,
   PatientPanelSection,
+  PatientPharmacy,
+  PatientPrimaryInsurance,
   PatientProfileAggregate,
   PatientProfileSummary,
 } from "./types";

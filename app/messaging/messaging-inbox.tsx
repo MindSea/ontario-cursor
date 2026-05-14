@@ -87,42 +87,23 @@ export function MessagingInbox({
        * left of that stack), which reads as a thicker line next to the
        * scrollbar in the messaging view. */}
       {onStartNewThread ? (
-        /* Sticky header inside the inbox column so the affordance is
-         * always visible above the conversation list, even as the list
-         * scrolls. Sits inside the column so the mobile two-pane CSS
-         * (`hidden` on the column when a thread is open) hides it too. */
+        /* Pinned header inside the inbox column. The whole column is
+         * `hidden` on mobile when a thread is open, so the affordance
+         * disappears with the inbox without any extra logic. */
         <div
           className={cn(
-            "flex shrink-0 items-center justify-between gap-2 border-b border-border/40 bg-background px-3 py-2 md:px-4",
+            "shrink-0 border-b border-border/40 bg-background px-3 py-2 md:px-4",
           )}
         >
-          <h2
-            className={cn(
-              "m-0 truncate font-medium text-foreground",
-              textBody,
-            )}
-          >
-            Conversations
-          </h2>
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={onStartNewThread}
-            className="hidden h-8 shrink-0 gap-1.5 px-3 md:inline-flex"
+            className="h-9 w-full justify-center gap-1.5"
           >
             <MessageSquarePlus className="size-4 shrink-0" aria-hidden />
             New conversation
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onStartNewThread}
-            aria-label="New conversation"
-            className="size-9 shrink-0 rounded-lg md:hidden"
-          >
-            <MessageSquarePlus className="size-5 text-foreground" aria-hidden />
           </Button>
         </div>
       ) : null}

@@ -82,12 +82,13 @@ export type PatientPanelSection = {
   tasks: readonly LongTermPanelTask[];
 };
 
-export type PatientContactMethodPreference =
-  | "phone"
-  | "sms"
-  | "email"
-  | "portal"
-  | "other";
+/**
+ * Channels the patient prefers to be reached on. Scoped to the three
+ * channels the navigator actually has at their disposal in this demo —
+ * `"portal"` and `"other"` were removed because there's no patient
+ * portal product wired up and "other" is an unanswerable label.
+ */
+export type PatientContactMethodPreference = "phone" | "sms" | "email";
 
 export type PatientEmergencyContact = {
   name: string;
@@ -96,7 +97,35 @@ export type PatientEmergencyContact = {
 };
 
 /**
+ * Pharmacy of choice for medication-related coordination (refills, prior
+ * authorizations, transfers). Address is one multiline string for demo
+ * symmetry with `homeAddress`; in a real system we'd split street / city
+ * / postal.
+ */
+export type PatientPharmacy = {
+  name: string;
+  address: string;
+  phone: string;
+};
+
+/**
+ * Primary insurance details surfaced in Contact / admin. Member ID and
+ * group number are free-form strings in the demo — payer formats vary
+ * widely and we don't validate.
+ */
+export type PatientPrimaryInsurance = {
+  carrier: string;
+  memberId: string;
+  groupNumber: string;
+};
+
+/**
  * Contact / admin block: all fields navigators may edit (demo policy: any navigator).
+ *
+ * Layout note: the form groups these fields into six titled sections
+ * (Contact information / Home address / Language & communication /
+ * Emergency contact / Pharmacy / Primary insurance). The grouping lives
+ * in the view; the shape here stays flat-ish for ease of patching.
  */
 export type PatientContactAdmin = {
   mobilePhone: string;
@@ -108,8 +137,8 @@ export type PatientContactAdmin = {
   translationRequired: boolean;
   contactMethodPreference: PatientContactMethodPreference;
   emergencyContact: PatientEmergencyContact;
-  pharmacyOfChoice: string;
-  primaryInsurance: string;
+  pharmacy: PatientPharmacy;
+  primaryInsurance: PatientPrimaryInsurance;
 };
 
 /**
