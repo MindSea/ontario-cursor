@@ -26,6 +26,19 @@ export type MessagingParticipantHeaderProps = {
   onAddPerson: (person: DirectoryPerson) => void;
   onRemovePerson: (ref: ParticipantRef) => void;
   onDiscardDraft?: () => void;
+  /** When set, patient roster chips open the patient profile for that `personId`. */
+  onPatientChipPress?: (patientId: string) => void;
+  /**
+   * Suppresses the remove (X) on a specific participant chip while the
+   * conversation is still a draft. Used by the patient profile to pin the
+   * profile's patient in place — they're the implicit subject of any
+   * draft started from inside their profile.
+   *
+   * Lock only applies to drafts; once the draft is committed (first
+   * message sent) standard remove rules apply (committed direct: no
+   * removes; committed group: remove allowed for non-self).
+   */
+  lockedParticipantRef?: ParticipantRef;
 };
 
 export function MessagingParticipantHeader({
@@ -36,6 +49,8 @@ export function MessagingParticipantHeader({
   onAddPerson,
   onRemovePerson,
   onDiscardDraft,
+  onPatientChipPress,
+  lockedParticipantRef,
 }: MessagingParticipantHeaderProps) {
   const directoryByKey = useMemo(
     () => buildDirectoryLookup(directory),
@@ -65,9 +80,32 @@ export function MessagingParticipantHeader({
 
   const showRemoveOnChip = (ref: ParticipantRef) => {
     if (!canManageRoster) return false;
+    if (isSelf(ref)) return false;
+    /* Locked-participant: while the conversation is still a draft, the
+     * caller can pin one participant (e.g. the patient when the draft was
+     * started from their profile) so their chip never offers an X. Once
+     * the draft is committed the lock no longer applies and the standard
+     * rules below take over. */
+    if (
+      conversation.isDraft &&
+      lockedParticipantRef &&
+      ref.kind === lockedParticipantRef.kind &&
+      ref.personId === lockedParticipantRef.personId
+    ) {
+      return false;
+    }
+    /* Drafts: permit removal as long as the conversation will still hold
+     * the signed-in user. The user is composing — they should be able to
+     * undo a participant they just added without discarding the whole
+     * draft. (Removing self is still blocked above.) */
+    if (conversation.isDraft) {
+      return conversation.participants.length >= 2;
+    }
+    /* Committed conversations: direct threads aren't editable (you'd
+     * start a new thread instead), and groups need at least three
+     * participants for removal to leave anything meaningful behind. */
     if (conversation.type === "direct" && conversation.participants.length === 2)
       return false;
-    if (isSelf(ref)) return false;
     if (conversation.participants.length <= 2) return false;
     return true;
   };
@@ -97,6 +135,8 @@ export function MessagingParticipantHeader({
           {orderedParticipants.map((ref) => {
             const name = displayNameFor(directoryByKey, ref);
             const removable = showRemoveOnChip(ref);
+            const openPatientProfile =
+              ref.kind === "patient" && onPatientChipPress;
             return (
               <span
                 key={`${ref.kind}:${ref.personId}`}
@@ -108,14 +148,27 @@ export function MessagingParticipantHeader({
                   removable ? "pr-0.5" : "px-3",
                 )}
               >
-                <span
-                  className={cn(
-                    "min-w-0 truncate font-medium",
-                    removable && "pl-3",
-                  )}
-                >
-                  {name}
-                </span>
+                {openPatientProfile ? (
+                  <button
+                    type="button"
+                    className={cn(
+                      "min-w-0 truncate text-left font-medium hover:underline",
+                      removable && "pl-3",
+                    )}
+                    onClick={() => onPatientChipPress(ref.personId)}
+                  >
+                    {name}
+                  </button>
+                ) : (
+                  <span
+                    className={cn(
+                      "min-w-0 truncate font-medium",
+                      removable && "pl-3",
+                    )}
+                  >
+                    {name}
+                  </span>
+                )}
                 {showRemoveOnChip(ref) ? (
                   <Button
                     type="button"

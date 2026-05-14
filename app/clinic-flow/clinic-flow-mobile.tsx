@@ -59,6 +59,7 @@ export type ClinicFlowMobileProps = {
   onScheduleViewModeChange: (mode: ScheduleViewMode) => void;
   filteredMatchDayOptions: readonly FilteredMatchDayOption[];
   onSelectFilteredCalendarDay: (dateKey: string) => void;
+  onOpenPatientProfile?: (patientId: string) => void;
   /** Merged onto the root wrapper (shell visibility from `page.tsx` + `useClinicFlowShellLayout`). */
   className?: string;
 };
@@ -80,6 +81,7 @@ export function ClinicFlowMobile({
   onScheduleViewModeChange,
   filteredMatchDayOptions,
   onSelectFilteredCalendarDay,
+  onOpenPatientProfile,
   className,
 }: ClinicFlowMobileProps) {
   return (
@@ -179,6 +181,7 @@ export function ClinicFlowMobile({
                 onRoomChange={(room) =>
                   onUpdateAppointment(selectedAppointment.id, { room })
                 }
+                onOpenPatientProfile={onOpenPatientProfile}
                 className="w-full min-w-full border-0 border-b border-t border-border/60 bg-background shadow-none"
               />
             </div>

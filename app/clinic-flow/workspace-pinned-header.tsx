@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BellRing, MessageSquare, Phone } from "lucide-react";
+import { BellRing, MessageSquare, Phone, UserCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,11 +34,14 @@ export function WorkspacePinnedHeader({
   appointment,
   onStageChange,
   onRoomChange,
+  onOpenPatientProfile,
   className,
 }: {
   appointment: Appointment;
   onStageChange: (stage: AppointmentStage) => void;
   onRoomChange: (room: string) => void;
+  /** Opens patient profile sheet / route for this visit’s `patientId`. */
+  onOpenPatientProfile?: (patientId: string) => void;
   className?: string;
 }) {
   const [patientActionToast, setPatientActionToast] = useState<string | null>(
@@ -71,6 +74,20 @@ export function WorkspacePinnedHeader({
                     {appointment.patientName}
                   </h2>
                   <div className="flex shrink-0 items-center gap-1">
+                    {onOpenPatientProfile ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0 bg-transparent hover:bg-muted"
+                        aria-label={`Open profile for ${appointment.patientName}`}
+                        onClick={() =>
+                          onOpenPatientProfile(appointment.patientId)
+                        }
+                      >
+                        <UserCircle className="size-4" aria-hidden />
+                      </Button>
+                    ) : null}
                     <Button
                       type="button"
                       variant="ghost"

@@ -45,6 +45,7 @@ export type ClinicFlowDesktopProps = {
   onScheduleViewModeChange: (mode: ScheduleViewMode) => void;
   filteredMatchDayOptions: readonly FilteredMatchDayOption[];
   onSelectFilteredCalendarDay: (dateKey: string) => void;
+  onOpenPatientProfile?: (patientId: string) => void;
   /** Merged onto the root wrapper (shell visibility from `page.tsx` + `useClinicFlowShellLayout`). */
   className?: string;
 };
@@ -65,6 +66,7 @@ export function ClinicFlowDesktop({
   onScheduleViewModeChange,
   filteredMatchDayOptions,
   onSelectFilteredCalendarDay,
+  onOpenPatientProfile,
   className,
 }: ClinicFlowDesktopProps) {
   return (
@@ -199,6 +201,7 @@ export function ClinicFlowDesktop({
                   onRoomChange={(room) =>
                     onUpdateAppointment(selectedAppointment.id, { room })
                   }
+                  onOpenPatientProfile={onOpenPatientProfile}
                   className="shrink-0"
                 />
                 <div

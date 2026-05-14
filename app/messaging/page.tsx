@@ -1,73 +1,60 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MessageSquarePlus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { textBody } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
-import {
-  conversationAfterFirstUserMessage,
-  conversationReadyToMessage,
-  canManageRoster,
-  mergeConversationMessages,
-  normalizeTypeForParticipantCount,
-} from "./messaging-conversation-logic";
+import { conversationReadyToMessage } from "./messaging-conversation-logic";
 import { MessagingInbox } from "./messaging-inbox";
 import { MessagingThread } from "./messaging-thread";
-import { buildMessagingSeed, CURRENT_USER_ID } from "./seed-messaging";
-import type { Conversation, DirectoryPerson, Message, ParticipantRef } from "./types";
+import { useMessagingStore } from "./messaging-store";
+import { PatientProfileDialog } from "@/app/patient-profile/patient-profile-dialog";
+import { usePatientProfileUrlState } from "@/app/patient-profile/use-patient-profile-url-state";
+import type { ParticipantRef } from "./types";
 import {
   canStartNewThread,
-  dedupeParticipantRefs,
-  displayNameFor,
-  buildDirectoryLookup,
-  findDirectConversation,
-  findGroupWithParticipantSet,
   isParticipantInConversation,
-  newConversationId,
-  newMessageId,
-  toParticipantRef,
 } from "./utils";
 
-function systemMessage(
-  conversationId: string,
-  body: string,
-  actor: DirectoryPerson,
-): Message {
-  return {
-    id: newMessageId(),
-    conversationId,
-    senderKind: actor.kind,
-    senderId: actor.id,
-    body,
-    sentAt: new Date().toISOString(),
-    variant: "system",
-  };
-}
-
 export default function MessagingPage() {
-  const seed = useMemo(() => buildMessagingSeed(), []);
-  const currentUser = useMemo(
-    () =>
-      seed.directory.find((d) => d.id === CURRENT_USER_ID) ??
-      seed.directory[0]!,
-    [seed.directory],
-  );
-  const directoryByKey = useMemo(
-    () => buildDirectoryLookup(seed.directory),
-    [seed.directory],
-  );
+  /* All conversation / message state lives in the shared store now, so
+   * edits made here are also visible inside the patient profile dialog
+   * (and vice versa). Only UI state — active conversation id, the mobile
+   * two-pane toggle — stays local. */
+  const store = useMessagingStore();
+  const {
+    conversations,
+    messages,
+    directory,
+    currentUser,
+    rosterEditable,
+    sendMessage,
+    editMessage,
+    deleteMessage,
+    addParticipant,
+    removeParticipant,
+    startDraftThread,
+    discardDraft,
+  } = store;
 
-  const [conversations, setConversations] = useState<Conversation[]>(
-    () => [...seed.conversations],
+  /* `selectedId` is the user's intent (last conversation they picked).
+   * `activeId` is what we actually render — derived from `selectedId` and
+   * the current `conversations`. If the user's pick got merged away (e.g.
+   * adding a participant converged this thread into an existing one) or
+   * never existed, we fall back to the first available conversation
+   * without writing through `setState` in an effect, which avoids a
+   * cascading render. */
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => conversations[0]?.id ?? null,
   );
-  const [messages, setMessages] = useState<Message[]>(() => [...seed.messages]);
-  const [activeId, setActiveId] = useState<string | null>(() =>
-    seed.conversations[0]?.id ?? null,
-  );
+  const activeId = useMemo<string | null>(() => {
+    if (selectedId && conversations.some((c) => c.id === selectedId)) {
+      return selectedId;
+    }
+    return conversations[0]?.id ?? null;
+  }, [selectedId, conversations]);
 
   const [isMd, setIsMd] = useState(false);
   useEffect(() => {
@@ -79,239 +66,27 @@ export default function MessagingPage() {
   }, []);
 
   const [mobileShowThread, setMobileShowThread] = useState(false);
+  const patientProfile = usePatientProfileUrlState();
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? null,
     [conversations, activeId],
   );
 
-  const rosterEditable = useMemo(
-    () => canManageRoster(currentUser),
-    [currentUser],
-  );
-
-  const mergeIntoTarget = useCallback(
-    (sourceId: string, targetId: string) => {
-      setMessages((prev) => mergeConversationMessages(prev, sourceId, targetId));
-      setConversations((prev) => prev.filter((c) => c.id !== sourceId));
-      setActiveId(targetId);
-    },
-    [],
-  );
-
-  const appendSystem = useCallback(
-    (conversationId: string, body: string) => {
-      setMessages((prev) => [...prev, systemMessage(conversationId, body, currentUser)]);
-    },
-    [currentUser],
-  );
-
-  const startDraftThread = useCallback(() => {
-    const me = toParticipantRef(currentUser);
-    const id = newConversationId();
-    const draft: Conversation = {
-      id,
-      type: "group",
-      title: null,
-      createdAt: new Date().toISOString(),
-      participants: [me],
-      isDraft: true,
-    };
-    setConversations((prev) => [draft, ...prev]);
-    setActiveId(id);
+  const handleStartDraft = useCallback(() => {
+    const id = startDraftThread();
+    setSelectedId(id);
     if (!isMd) setMobileShowThread(true);
-  }, [currentUser, isMd]);
+  }, [startDraftThread, isMd]);
 
-  const discardDraft = useCallback(() => {
-    if (!activeId || !activeConversation?.isDraft) return;
-    const id = activeId;
-    setMessages((prev) => prev.filter((m) => m.conversationId !== id));
-    setConversations((prev) => {
-      const next = prev.filter((c) => c.id !== id);
-      setActiveId(next[0]?.id ?? null);
-      return next;
-    });
-  }, [activeId, activeConversation?.isDraft]);
-
-  const addParticipant = useCallback(
-    (person: DirectoryPerson) => {
-      if (!activeId || !rosterEditable) return;
-      const ref = toParticipantRef(person);
-      const me = toParticipantRef(currentUser);
-      const mergedRef = { current: false };
-
-      setConversations((prev) => {
-        const idx = prev.findIndex((c) => c.id === activeId);
-        if (idx === -1) return prev;
-        const conv = prev[idx]!;
-        if (conv.participants.some((p) => p.kind === ref.kind && p.personId === ref.personId))
-          return prev;
-
-        const nextParticipants = dedupeParticipantRefs([...conv.participants, ref]);
-        const nextConv = normalizeTypeForParticipantCount({
-          ...conv,
-          participants: nextParticipants,
-        });
-
-        if (nextConv.type === "direct" && nextConv.participants.length === 2) {
-          const [a, b] = nextConv.participants;
-          const existing = findDirectConversation(prev, a, b, activeId);
-          if (existing) {
-            mergedRef.current = true;
-            queueMicrotask(() => {
-              mergeIntoTarget(activeId, existing.id);
-            });
-            return prev;
-          }
-        }
-
-        if (nextConv.type === "group" && nextConv.participants.length >= 3) {
-          const existingG = findGroupWithParticipantSet(
-            prev,
-            nextConv.participants,
-            activeId,
-          );
-          if (existingG) {
-            mergedRef.current = true;
-            queueMicrotask(() => {
-              mergeIntoTarget(activeId, existingG.id);
-            });
-            return prev;
-          }
-        }
-
-        const updated = [...prev];
-        updated[idx] = nextConv;
-        return updated;
-      });
-
-      if (!mergedRef.current) {
-        appendSystem(
-          activeId,
-          `${displayNameFor(directoryByKey, me)} added ${displayNameFor(directoryByKey, ref)} to the conversation.`,
-        );
-      }
-    },
-    [
-      activeId,
-      rosterEditable,
-      currentUser,
-      directoryByKey,
-      mergeIntoTarget,
-      appendSystem,
-    ],
-  );
-
-  const removeParticipant = useCallback(
-    (ref: ParticipantRef) => {
-      if (!activeId || !rosterEditable) return;
-      const me = toParticipantRef(currentUser);
-      const mergedRef = { current: false };
-
-      setConversations((prev) => {
-        const idx = prev.findIndex((c) => c.id === activeId);
-        if (idx === -1) return prev;
-        const conv = prev[idx]!;
-        const name = displayNameFor(directoryByKey, ref);
-        const nextParticipants = conv.participants.filter(
-          (p) => !(p.kind === ref.kind && p.personId === ref.personId),
-        );
-        if (nextParticipants.length < 2) return prev;
-
-        const nextConv = normalizeTypeForParticipantCount({
-          ...conv,
-          participants: nextParticipants,
-        });
-
-        if (nextConv.type === "direct" && nextConv.participants.length === 2) {
-          const [a, b] = nextConv.participants;
-          const existing = findDirectConversation(prev, a, b, activeId);
-          if (existing) {
-            mergedRef.current = true;
-            queueMicrotask(() => {
-              mergeIntoTarget(activeId, existing.id);
-            });
-            return prev;
-          }
-        }
-
-        const updated = [...prev];
-        updated[idx] = nextConv;
-        return updated;
-      });
-
-      if (!mergedRef.current) {
-        appendSystem(
-          activeId,
-          `${displayNameFor(directoryByKey, me)} removed ${displayNameFor(directoryByKey, ref)} from the conversation.`,
-        );
-      }
-    },
-    [activeId, rosterEditable, directoryByKey, mergeIntoTarget, appendSystem, currentUser],
-  );
-
-  const sendMessage = useCallback(
-    (body: string) => {
-      if (!activeId || !body.trim() || !activeConversation) return;
-      if (
-        currentUser.kind === "patient" &&
-        !isParticipantInConversation(activeConversation, currentUser)
-      ) {
-        return;
-      }
-      if (!conversationReadyToMessage(activeConversation)) return;
-
-      const trimmed = body.trim();
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: newMessageId(),
-          conversationId: activeId,
-          senderKind: currentUser.kind,
-          senderId: currentUser.id,
-          body: trimmed,
-          sentAt: new Date().toISOString(),
-          variant: "user",
-        },
-      ]);
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeId && c.isDraft
-            ? conversationAfterFirstUserMessage(c)
-            : c,
-        ),
-      );
-    },
-    [activeId, activeConversation, currentUser],
-  );
-
-  const editMessage = useCallback((messageId: string, body: string) => {
-    const trimmed = body.trim();
-    if (!trimmed) return;
-    const now = new Date().toISOString();
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId && m.variant !== "system"
-          ? { ...m, body: trimmed, editedAt: now }
-          : m,
-      ),
-    );
-  }, []);
-
-  const deleteMessage = useCallback((messageId: string) => {
-    const now = new Date().toISOString();
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId && m.variant !== "system"
-          ? { ...m, deletedAt: now, body: "" }
-          : m,
-      ),
-    );
-  }, []);
+  const handleDiscardDraft = useCallback(() => {
+    if (!activeId) return;
+    discardDraft(activeId);
+  }, [activeId, discardDraft]);
 
   const selectConversation = useCallback(
     (id: string) => {
-      setActiveId(id);
+      setSelectedId(id);
       if (!isMd) setMobileShowThread(true);
     },
     [isMd],
@@ -350,30 +125,10 @@ export default function MessagingPage() {
             <h1 className="min-w-0 flex-1 truncate text-lg font-semibold leading-tight tracking-tight">
               Messaging
             </h1>
-            {showNewThread ? (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-9 shrink-0 rounded-lg md:hidden"
-                  aria-label="New conversation"
-                  onClick={startDraftThread}
-                >
-                  <MessageSquarePlus className="size-5 text-foreground" aria-hidden />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="hidden h-8 shrink-0 gap-1.5 px-3 md:inline-flex"
-                  onClick={startDraftThread}
-                >
-                  <MessageSquarePlus className="size-4 shrink-0" aria-hidden />
-                  New conversation
-                </Button>
-              </>
-            ) : null}
+            {/* "New conversation" lives inside `MessagingInbox` now (above
+             * the conversation list), so it auto-hides on mobile when the
+             * user drills into a thread. The page header is just title +
+             * sidebar trigger. */}
           </div>
         </div>
       </div>
@@ -402,10 +157,11 @@ export default function MessagingPage() {
             <MessagingInbox
               conversations={conversations}
               messages={messages}
-              directory={seed.directory}
+              directory={directory}
               currentUser={currentUser}
               activeId={activeId}
               onSelectConversation={selectConversation}
+              onStartNewThread={showNewThread ? handleStartDraft : undefined}
             />
           </div>
 
@@ -420,10 +176,13 @@ export default function MessagingPage() {
               conversation={activeConversation}
               messages={messages}
               currentUser={currentUser}
-              directory={seed.directory}
+              directory={directory}
               showMobileBack={!isMd && mobileShowThread}
               onMobileBack={() => setMobileShowThread(false)}
-              onSend={sendMessage}
+              onSend={(body) => {
+                if (!activeId) return;
+                sendMessage(activeId, body);
+              }}
               onEditMessage={editMessage}
               onDeleteMessage={deleteMessage}
               canSend={
@@ -433,19 +192,30 @@ export default function MessagingPage() {
                   isParticipantInConversation(activeConversation, currentUser))
               }
               rosterEditable={rosterEditable}
-              onAddParticipant={addParticipant}
-              onRemoveParticipant={(ref: ParticipantRef) =>
-                removeParticipant(ref)
-              }
+              onAddParticipant={(person) => {
+                if (!activeId) return;
+                addParticipant(activeId, person);
+              }}
+              onRemoveParticipant={(ref: ParticipantRef) => {
+                if (!activeId) return;
+                removeParticipant(activeId, ref);
+              }}
               onDiscardDraft={
                 activeConversation?.isDraft && rosterEditable
-                  ? discardDraft
+                  ? handleDiscardDraft
                   : undefined
               }
+              onOpenPatientProfile={patientProfile.open}
             />
           </div>
         </div>
       </div>
+      <PatientProfileDialog
+        patientId={patientProfile.patientId}
+        section={patientProfile.section}
+        onSectionChange={patientProfile.setSection}
+        onRequestClose={patientProfile.close}
+      />
     </div>
   );
 }

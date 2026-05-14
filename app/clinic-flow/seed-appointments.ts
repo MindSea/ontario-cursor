@@ -1,5 +1,18 @@
 import { addDays, format, subDays } from "date-fns";
 
+import {
+  PATIENT_DAVID_MILLER,
+  PATIENT_ELENA_RODRIGUEZ,
+  PATIENT_EVELYN_HART,
+  PATIENT_HELEN_PARK,
+  PATIENT_JAMES_WILSON,
+  PATIENT_LINDA_WU,
+  PATIENT_MARIA_GARCIA,
+  PATIENT_ROBERT_CHEN,
+  PATIENT_SAMUEL_LEE,
+  PATIENT_SARAH_JENKINS,
+} from "@/app/patient-profile/patient-ids";
+
 import { intakeBundleProgressFromMissing } from "./intake-form-catalog";
 import { deriveSeedCheckedInAt } from "./schedule-agenda-seed";
 import type {
@@ -277,6 +290,7 @@ export function buildSeedAppointments(): Appointment[] {
       id: "1",
       date: today,
       time: "08:00 AM",
+      patientId: PATIENT_SARAH_JENKINS,
       patientName: "Sarah Jenkins",
       dateOfBirth: "1948-03-12",
       room: "RM 1",
@@ -381,6 +395,7 @@ export function buildSeedAppointments(): Appointment[] {
       id: "2",
       date: today,
       time: "08:15 AM",
+      patientId: PATIENT_ROBERT_CHEN,
       patientName: "Robert Chen",
       dateOfBirth: "1945-10-02",
       room: "RM 3",
@@ -459,6 +474,7 @@ export function buildSeedAppointments(): Appointment[] {
       id: "3",
       date: today,
       time: "08:45 AM",
+      patientId: PATIENT_ELENA_RODRIGUEZ,
       patientName: "Elena Rodriguez",
       dateOfBirth: "1949-06-21",
       room: "WAIT",
@@ -506,6 +522,7 @@ export function buildSeedAppointments(): Appointment[] {
       id: "4",
       date: today,
       time: "09:30 AM",
+      patientId: PATIENT_JAMES_WILSON,
       patientName: "James Wilson",
       dateOfBirth: "1948-01-08",
       room: "RM 2",
@@ -562,6 +579,7 @@ export function buildSeedAppointments(): Appointment[] {
       id: "5",
       date: today,
       time: "10:00 AM",
+      patientId: PATIENT_MARIA_GARCIA,
       patientName: "Maria Garcia",
       dateOfBirth: "1942-11-30",
       room: "RM 4",
@@ -652,6 +670,7 @@ export function buildSeedAppointments(): Appointment[] {
       id: "6",
       date: today,
       time: "10:15 AM",
+      patientId: PATIENT_SAMUEL_LEE,
       patientName: "Samuel Lee",
       dateOfBirth: "1940-07-04",
       room: "LAB 1",
@@ -720,6 +739,7 @@ export function buildSeedAppointments(): Appointment[] {
       id: "7",
       date: today,
       time: "11:00 AM",
+      patientId: PATIENT_LINDA_WU,
       patientName: "Linda Wu",
       dateOfBirth: "1955-09-16",
       room: "WAIT",
@@ -761,6 +781,7 @@ export function buildSeedAppointments(): Appointment[] {
       id: "8",
       date: today,
       time: "11:30 AM",
+      patientId: PATIENT_DAVID_MILLER,
       patientName: "David Miller",
       dateOfBirth: "1940-05-05",
       room: "RM 5",
@@ -816,6 +837,7 @@ export function buildSeedAppointments(): Appointment[] {
       id: "9",
       date: today,
       time: "12:30 PM",
+      patientId: PATIENT_HELEN_PARK,
       patientName: "Helen Park",
       dateOfBirth: "1950-01-11",
       room: "RM 2",
@@ -850,6 +872,7 @@ export function buildSeedAppointments(): Appointment[] {
       id: "10",
       date: today,
       time: "03:30 PM",
+      patientId: PATIENT_EVELYN_HART,
       patientName: "Evelyn Hart",
       dateOfBirth: "1943-04-22",
       room: "WAIT",

@@ -3,6 +3,7 @@ import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { MessagingStoreProvider } from "@/app/messaging/messaging-store";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({
@@ -32,7 +33,12 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <TooltipProvider delayDuration={0}>
-          <AppShell>{children}</AppShell>
+          {/* Shared messaging state (conversations, messages, directory)
+           * for `/messaging` and the patient profile dialog. Lives here at
+           * the root so edits made in one view are visible in the other. */}
+          <MessagingStoreProvider>
+            <AppShell>{children}</AppShell>
+          </MessagingStoreProvider>
         </TooltipProvider>
       </body>
     </html>

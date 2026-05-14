@@ -45,6 +45,15 @@ export type MessagingThreadProps = {
   onAddParticipant?: (person: DirectoryPerson) => void;
   onRemoveParticipant?: (ref: ParticipantRef) => void;
   onDiscardDraft?: () => void;
+  /** Opens patient profile for a messaging `patient` participant id. */
+  onOpenPatientProfile?: (patientId: string) => void;
+  /**
+   * Pins a participant against removal while the conversation is a draft.
+   * Forwarded to `MessagingParticipantHeader`. Used by the patient
+   * profile flow to keep the profile's patient on every profile-seeded
+   * draft until the first message is sent.
+   */
+  lockedParticipantRef?: ParticipantRef;
 };
 
 function isOwnMessage(m: Message, me: DirectoryPerson): boolean {
@@ -70,6 +79,8 @@ export function MessagingThread({
   onAddParticipant,
   onRemoveParticipant,
   onDiscardDraft,
+  onOpenPatientProfile,
+  lockedParticipantRef,
 }: MessagingThreadProps) {
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -114,8 +125,17 @@ export function MessagingThread({
         : "Group message"
     : "Select a conversation";
 
+  /* Drafts always permit roster edits: a draft hasn't committed yet, and
+   * the user composing it should be free to add or remove participants
+   * regardless of the current `direct`/`group` type label (which
+   * `normalizeTypeForParticipantCount` flips automatically as the set
+   * grows/shrinks). Committed conversations stay locked to groups —
+   * removing someone from a committed direct doesn't make sense; instead
+   * you'd start a new thread. */
   const canEditRoster =
-    rosterEditable && conversation != null && conversation.type === "group";
+    rosterEditable &&
+    conversation != null &&
+    (conversation.isDraft || conversation.type === "group");
 
   const openEdit = (m: Message) => {
     if (m.deletedAt || m.variant === "system") return;
@@ -197,6 +217,8 @@ export function MessagingThread({
             onAddPerson={onAddParticipant ?? (() => {})}
             onRemovePerson={onRemoveParticipant ?? (() => {})}
             onDiscardDraft={onDiscardDraft}
+            onPatientChipPress={onOpenPatientProfile}
+            lockedParticipantRef={lockedParticipantRef}
           />
         ) : null}
       </div>
@@ -238,6 +260,7 @@ export function MessagingThread({
                   kind: m.senderKind,
                   personId: m.senderId,
                 });
+                const senderIsPatient = m.senderKind === "patient";
                 const roleLabel = roleBadgeLabel(m.senderKind);
                 const timeStr = format(parseISO(m.sentAt), "MMM d, h:mm a");
                 return (
@@ -257,14 +280,27 @@ export function MessagingThread({
                       )}
                     >
                       <div className="flex flex-wrap items-center gap-1.5 gap-y-1">
-                        <span
-                          className={cn(
-                            "font-medium text-foreground",
-                            textMeta,
-                          )}
-                        >
-                          {senderLabel}
-                        </span>
+                        {senderIsPatient && onOpenPatientProfile ? (
+                          <button
+                            type="button"
+                            className={cn(
+                              "font-medium text-foreground underline-offset-2 hover:underline",
+                              textMeta,
+                            )}
+                            onClick={() => onOpenPatientProfile(m.senderId)}
+                          >
+                            {senderLabel}
+                          </button>
+                        ) : (
+                          <span
+                            className={cn(
+                              "font-medium text-foreground",
+                              textMeta,
+                            )}
+                          >
+                            {senderLabel}
+                          </span>
+                        )}
                         <Badge variant="secondary" className="font-normal">
                           {roleLabel}
                         </Badge>

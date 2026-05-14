@@ -27,6 +27,8 @@ import { useClinicFlowShellLayout } from "./use-clinic-flow-shell-layout";
 import type { FilteredMatchDayOption } from "./schedule-date-row";
 import type { ScheduleViewMode } from "./schedule-view-toggle";
 import type { ScheduleSheetsApi } from "./schedule-toolbar";
+import { PatientProfileDialog } from "@/app/patient-profile/patient-profile-dialog";
+import { usePatientProfileUrlState } from "@/app/patient-profile/use-patient-profile-url-state";
 
 const SCHEDULE_VIEW_MODE_STORAGE_KEY = "clinic-flow.scheduleViewMode";
 
@@ -51,6 +53,7 @@ export default function ClinicFlowPage() {
   const [patientSearchQuery, setPatientSearchQuery] = useState("");
   const [scheduleViewMode, setScheduleViewMode] =
     useState<ScheduleViewMode>("grid");
+  const patientProfile = usePatientProfileUrlState();
 
   useLayoutEffect(() => {
     try {
@@ -208,6 +211,7 @@ export default function ClinicFlowPage() {
         onScheduleViewModeChange={handleScheduleViewModeChange}
         filteredMatchDayOptions={filteredMatchDayOptions}
         onSelectFilteredCalendarDay={selectFilteredCalendarDay}
+        onOpenPatientProfile={patientProfile.open}
       />
 
       <ClinicFlowDesktop
@@ -230,6 +234,13 @@ export default function ClinicFlowPage() {
         onScheduleViewModeChange={handleScheduleViewModeChange}
         filteredMatchDayOptions={filteredMatchDayOptions}
         onSelectFilteredCalendarDay={selectFilteredCalendarDay}
+        onOpenPatientProfile={patientProfile.open}
+      />
+      <PatientProfileDialog
+        patientId={patientProfile.patientId}
+        section={patientProfile.section}
+        onSectionChange={patientProfile.setSection}
+        onRequestClose={patientProfile.close}
       />
     </div>
   );

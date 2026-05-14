@@ -1,3 +1,17 @@
+import {
+  PATIENT_DAVID_MILLER,
+  PATIENT_ELENA_RODRIGUEZ,
+  PATIENT_EVELYN_HART,
+  PATIENT_HELEN_PARK,
+  PATIENT_JAMES_OKAFOR,
+  PATIENT_JAMES_WILSON,
+  PATIENT_LINDA_WU,
+  PATIENT_MARIA_GARCIA,
+  PATIENT_ROBERT_CHEN,
+  PATIENT_SAMUEL_LEE,
+  PATIENT_SARAH_JENKINS,
+} from "@/app/patient-profile/patient-ids";
+
 import type { Conversation, DirectoryPerson, Message } from "./types";
 
 /** Demo persona — navigators message as Anna. */
@@ -9,9 +23,18 @@ export function buildDirectory(): DirectoryPerson[] {
     { id: "nav-marcus", kind: "navigator", displayName: "Marcus" },
     { id: "nav-jordan", kind: "navigator", displayName: "Jordan" },
     { id: "nav-riley", kind: "navigator", displayName: "Riley" },
-    { id: "pat-robert", kind: "patient", displayName: "Robert Chen" },
-    { id: "pat-linda", kind: "patient", displayName: "Linda Wu" },
-    { id: "pat-james", kind: "patient", displayName: "James Okafor" },
+    /* Patients: ids align with `Appointment.patientId` + patient profile seed (`pat-*`). */
+    { id: PATIENT_DAVID_MILLER, kind: "patient", displayName: "David Miller" },
+    { id: PATIENT_ELENA_RODRIGUEZ, kind: "patient", displayName: "Elena Rodriguez" },
+    { id: PATIENT_EVELYN_HART, kind: "patient", displayName: "Evelyn Hart" },
+    { id: PATIENT_HELEN_PARK, kind: "patient", displayName: "Helen Park" },
+    { id: PATIENT_JAMES_OKAFOR, kind: "patient", displayName: "James Okafor" },
+    { id: PATIENT_JAMES_WILSON, kind: "patient", displayName: "James Wilson" },
+    { id: PATIENT_LINDA_WU, kind: "patient", displayName: "Linda Wu" },
+    { id: PATIENT_MARIA_GARCIA, kind: "patient", displayName: "Maria Garcia" },
+    { id: PATIENT_ROBERT_CHEN, kind: "patient", displayName: "Robert Chen" },
+    { id: PATIENT_SAMUEL_LEE, kind: "patient", displayName: "Samuel Lee" },
+    { id: PATIENT_SARAH_JENKINS, kind: "patient", displayName: "Sarah Jenkins" },
     { id: "pcp-ellis", kind: "pcp", displayName: "Dr. Ellis" },
     { id: "pcp-patel", kind: "pcp", displayName: "Dr. Patel" },
     { id: "pcp-nguyen", kind: "pcp", displayName: "Dr. Nguyen" },
@@ -86,7 +109,7 @@ export function buildSeedConversations(): Conversation[] {
         { kind: "navigator", personId: "nav-riley" },
       ],
     },
-    /** Navigator sync group */
+    /** Monthly sync group */
     {
       id: "conv-g-monthly-sync",
       type: "group",
@@ -97,6 +120,95 @@ export function buildSeedConversations(): Conversation[] {
         { kind: "navigator", personId: "nav-anna" },
         { kind: "navigator", personId: "nav-riley" },
         { kind: "navigator", personId: "nav-jordan" },
+      ],
+    },
+    /** Anna + Sarah (CHF follow-up coordination) */
+    {
+      id: "conv-d-anna-sarah",
+      type: "direct",
+      title: null,
+      createdAt: "2026-05-03T10:00:00.000Z",
+      participants: [
+        { kind: "navigator", personId: "nav-anna" },
+        { kind: "patient", personId: PATIENT_SARAH_JENKINS },
+      ],
+    },
+    /** Jordan + Elena (acute visit check-in) */
+    {
+      id: "conv-d-jordan-elena",
+      type: "direct",
+      title: null,
+      createdAt: "2026-05-04T12:00:00.000Z",
+      participants: [
+        { kind: "navigator", personId: "nav-jordan" },
+        { kind: "patient", personId: PATIENT_ELENA_RODRIGUEZ },
+      ],
+    },
+    /** Marcus + David (immunization / allergy flags) */
+    {
+      id: "conv-d-marcus-david",
+      type: "direct",
+      title: null,
+      createdAt: "2026-05-05T16:30:00.000Z",
+      participants: [
+        { kind: "navigator", personId: "nav-marcus" },
+        { kind: "patient", personId: PATIENT_DAVID_MILLER },
+      ],
+    },
+    /** Small care team around Maria */
+    {
+      id: "conv-g-maria-care",
+      type: "group",
+      title: null,
+      createdAt: "2026-05-02T09:00:00.000Z",
+      participants: [
+        { kind: "navigator", personId: "nav-anna" },
+        { kind: "patient", personId: PATIENT_MARIA_GARCIA },
+        { kind: "pcp", personId: "pcp-nguyen" },
+      ],
+    },
+    /** Riley + James Wilson (HTN visit logistics) */
+    {
+      id: "conv-d-riley-james-wilson",
+      type: "direct",
+      title: null,
+      createdAt: "2026-05-09T14:00:00.000Z",
+      participants: [
+        { kind: "navigator", personId: "nav-riley" },
+        { kind: "patient", personId: PATIENT_JAMES_WILSON },
+      ],
+    },
+    /** Anna + Helen (medication review follow-up) */
+    {
+      id: "conv-d-anna-helen",
+      type: "direct",
+      title: null,
+      createdAt: "2026-05-08T09:15:00.000Z",
+      participants: [
+        { kind: "navigator", personId: "nav-anna" },
+        { kind: "patient", personId: PATIENT_HELEN_PARK },
+      ],
+    },
+    /** Riley + Evelyn (wellness prep) */
+    {
+      id: "conv-d-riley-evelyn",
+      type: "direct",
+      title: null,
+      createdAt: "2026-05-07T11:00:00.000Z",
+      participants: [
+        { kind: "navigator", personId: "nav-riley" },
+        { kind: "patient", personId: PATIENT_EVELYN_HART },
+      ],
+    },
+    /** Marcus + Samuel (lab / INR logistics) */
+    {
+      id: "conv-d-marcus-samuel",
+      type: "direct",
+      title: null,
+      createdAt: "2026-05-03T08:00:00.000Z",
+      participants: [
+        { kind: "navigator", personId: "nav-marcus" },
+        { kind: "patient", personId: PATIENT_SAMUEL_LEE },
       ],
     },
   ];
@@ -264,6 +376,150 @@ export function buildSeedMessages(): Message[] {
       senderId: "nav-jordan",
       body: "+1 — I’ll bring examples from yesterday’s visits.",
       sentAt: "2026-05-06T14:08:00.000Z",
+    },
+    /* Anna + Sarah */
+    {
+      id: "msg-19",
+      conversationId: "conv-d-anna-sarah",
+      senderKind: "navigator",
+      senderId: "nav-anna",
+      body: "Sarah — quick check on the cardiology echo paperwork. Do you want me to fax the release today?",
+      sentAt: "2026-05-10T15:00:00.000Z",
+    },
+    {
+      id: "msg-20",
+      conversationId: "conv-d-anna-sarah",
+      senderKind: "patient",
+      senderId: PATIENT_SARAH_JENKINS,
+      body: "Yes please — I can sign electronically if you send the link.",
+      sentAt: "2026-05-10T15:22:00.000Z",
+    },
+    /* Jordan + Elena */
+    {
+      id: "msg-21",
+      conversationId: "conv-d-jordan-elena",
+      senderKind: "navigator",
+      senderId: "nav-jordan",
+      body: "Elena — bring your inhaler spacer if you have one; we’ll review technique at intake.",
+      sentAt: "2026-05-09T12:10:00.000Z",
+    },
+    {
+      id: "msg-22",
+      conversationId: "conv-d-jordan-elena",
+      senderKind: "patient",
+      senderId: PATIENT_ELENA_RODRIGUEZ,
+      body: "Will do. Should I arrive early for parking?",
+      sentAt: "2026-05-09T12:18:00.000Z",
+    },
+    /* Marcus + David */
+    {
+      id: "msg-23",
+      conversationId: "conv-d-marcus-david",
+      senderKind: "navigator",
+      senderId: "nav-marcus",
+      body: "David — Dr. Ellis asked us to hold flu until we review the vaccine allergy note. I’ll meet you before shots.",
+      sentAt: "2026-05-10T09:00:00.000Z",
+    },
+    {
+      id: "msg-24",
+      conversationId: "conv-d-marcus-david",
+      senderKind: "patient",
+      senderId: PATIENT_DAVID_MILLER,
+      body: "Understood. I’ll bring the letter from the allergist.",
+      sentAt: "2026-05-10T09:14:00.000Z",
+    },
+    /* Maria care team */
+    {
+      id: "msg-25",
+      conversationId: "conv-g-maria-care",
+      senderKind: "navigator",
+      senderId: "nav-anna",
+      body: "Maria — sharing this thread with Dr. Nguyen so we can align on records and next steps.",
+      sentAt: "2026-05-08T10:00:00.000Z",
+    },
+    {
+      id: "msg-26",
+      conversationId: "conv-g-maria-care",
+      senderKind: "pcp",
+      senderId: "pcp-nguyen",
+      body: "Thanks Anna. Maria, once outside records arrive we’ll book the follow-up.",
+      sentAt: "2026-05-08T10:08:00.000Z",
+    },
+    {
+      id: "msg-27",
+      conversationId: "conv-g-maria-care",
+      senderKind: "patient",
+      senderId: PATIENT_MARIA_GARCIA,
+      body: "Thank you both — I’ll upload what I have tonight.",
+      sentAt: "2026-05-08T10:20:00.000Z",
+    },
+    /* Riley + James Wilson */
+    {
+      id: "msg-28",
+      conversationId: "conv-d-riley-james-wilson",
+      senderKind: "navigator",
+      senderId: "nav-riley",
+      body: "James — BP cuff batteries looked low last visit; bring the cuff if you can.",
+      sentAt: "2026-05-10T08:30:00.000Z",
+    },
+    {
+      id: "msg-29",
+      conversationId: "conv-d-riley-james-wilson",
+      senderKind: "patient",
+      senderId: PATIENT_JAMES_WILSON,
+      body: "Packed it — see you at the visit.",
+      sentAt: "2026-05-10T08:35:00.000Z",
+    },
+    /* Anna + Helen */
+    {
+      id: "msg-30",
+      conversationId: "conv-d-anna-helen",
+      senderKind: "patient",
+      senderId: PATIENT_HELEN_PARK,
+      body: "Anna — can you confirm my aspirin dose after today’s med review?",
+      sentAt: "2026-05-09T16:00:00.000Z",
+    },
+    {
+      id: "msg-31",
+      conversationId: "conv-d-anna-helen",
+      senderKind: "navigator",
+      senderId: "nav-anna",
+      body: "Yes — 81 mg daily unless Dr. Patel changes it; I’ll recap in your after-visit summary.",
+      sentAt: "2026-05-09T16:05:00.000Z",
+    },
+    /* Riley + Evelyn */
+    {
+      id: "msg-32",
+      conversationId: "conv-d-riley-evelyn",
+      senderKind: "navigator",
+      senderId: "nav-riley",
+      body: "Evelyn — wellness visit checklist is in the portal; ping me if any form won’t submit.",
+      sentAt: "2026-05-08T11:00:00.000Z",
+    },
+    {
+      id: "msg-33",
+      conversationId: "conv-d-riley-evelyn",
+      senderKind: "patient",
+      senderId: PATIENT_EVELYN_HART,
+      body: "Got it — all green except insurance card photo. Re-uploading now.",
+      sentAt: "2026-05-08T11:12:00.000Z",
+    },
+    /* Marcus + Samuel */
+    {
+      id: "msg-34",
+      conversationId: "conv-d-marcus-samuel",
+      senderKind: "navigator",
+      senderId: "nav-marcus",
+      body: "Samuel — INR clinic asked for this week’s home readings if you have them.",
+      sentAt: "2026-05-07T07:30:00.000Z",
+    },
+    {
+      id: "msg-35",
+      conversationId: "conv-d-marcus-samuel",
+      senderKind: "patient",
+      senderId: PATIENT_SAMUEL_LEE,
+      body: "Sent a photo of my log sheet in reply here.",
+      sentAt: "2026-05-07T07:45:00.000Z",
     },
   ];
 }

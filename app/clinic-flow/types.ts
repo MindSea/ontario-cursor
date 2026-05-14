@@ -35,6 +35,11 @@ export type FormCompletionStatus =
 
 export type Appointment = {
   id: string;
+  /**
+   * Stable patient key shared with patient profile + messaging (`pat-*`).
+   * @see `app/patient-profile/patient-ids.ts`
+   */
+  patientId: string;
   /** Calendar day key, `yyyy-MM-dd`. */
   date: string;
   time: string;
