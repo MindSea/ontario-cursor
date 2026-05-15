@@ -6,7 +6,6 @@ import {
   useId,
   useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { format, parse } from "date-fns";
@@ -25,7 +24,6 @@ import type { Appointment } from "./types";
 import { useClinicFlowShellLayout } from "./use-clinic-flow-shell-layout";
 import type { FilteredMatchDayOption } from "./schedule-date-row";
 import type { ScheduleViewMode } from "./schedule-view-toggle";
-import type { ScheduleSheetsApi } from "./schedule-toolbar";
 import { PatientProfileDialog } from "@/app/patient-profile/patient-profile-dialog";
 import { usePatientProfileUrlState } from "@/app/patient-profile/use-patient-profile-url-state";
 
@@ -77,7 +75,6 @@ export default function ClinicFlowPage() {
 
   const toolbarIdDesk = useId();
   const toolbarIdMobile = useId();
-  const scheduleSheetsApiRef = useRef<ScheduleSheetsApi | null>(null);
 
   const { rootRef, insetNarrow } = useClinicFlowShellLayout();
 
@@ -175,8 +172,10 @@ export default function ClinicFlowPage() {
   const scheduleToolbarMobileProps = {
     ...scheduleToolbarDeskProps,
     idPrefix: toolbarIdMobile,
+    /* Search lives in the Clinic Flow mobile title bar (inline
+     * expand-to-input). The panel chrome below the title bar should
+     * therefore hide its own search icon to avoid duplication. */
     panelDetachSearchButton: true,
-    scheduleSheetsApiRef,
   };
 
   return (

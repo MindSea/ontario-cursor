@@ -1,12 +1,24 @@
 "use client";
 
-import type { MutableRefObject, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ListFilter, Search, X } from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { ChevronDown, ListFilter, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Sheet,
   SheetContent,
@@ -71,29 +83,26 @@ export type ScheduleToolbarProps = {
   mobileChromeLeading?: ReactNode;
   /**
    * When false, patient search is not rendered in this toolbar (e.g. desktop header hosts
-   * {@link SchedulePatientSearch}). Sheets still include search when opened.
+   * {@link SchedulePatientSearch} directly).
    */
   showPatientSearch?: boolean;
   /**
-   * Panel icon strip (`layout="panel"` below `md`): hide search icon; open search via
-   * {@link scheduleSheetsApiRef} (e.g. Clinic Flow mobile title bar).
+   * Panel icon strip (`layout="panel"` below `md`): hide the search
+   * icon entirely. Search is handled by the parent (Clinic Flow mobile
+   * title bar uses its own inline-expand affordance, so the panel
+   * chrome shouldn't duplicate it).
    */
   panelDetachSearchButton?: boolean;
-  /** Set by toolbar; call `openPatientSearch()` from a parent-placed control. */
-  scheduleSheetsApiRef?: MutableRefObject<ScheduleSheetsApi | null>;
   /**
-   * When `layout="panel"`, render only bottom-sheet portals (filters + search) so imperative
-   * open still works while visible chrome is hidden (e.g. Clinic Flow mobile Workspace tab).
+   * When `layout="panel"`, render only the filters bottom-sheet portal
+   * so the imperative open still works while visible chrome is hidden
+   * (e.g. Clinic Flow mobile Workspace tab — filters still openable
+   * from the schedule tab's icon row).
    */
   panelSheetsOnly?: boolean;
 };
 
 type FilterMenuId = "status" | "pcp" | "navigator";
-
-/** Imperative hooks for schedule sheets (e.g. mobile header search icon). */
-export type ScheduleSheetsApi = {
-  openPatientSearch: () => void;
-};
 
 function toggleStringInList(
   list: readonly string[],
@@ -104,6 +113,23 @@ function toggleStringInList(
   return list.filter((x) => x !== value);
 }
 
+/**
+ * Multi-select dropdown shaped like a filter chip (`Category: summary`).
+ *
+ * Backed by Radix Popover so outside-click / Esc / focus return / portaling
+ * are all handled by the primitive — previously this component rolled its
+ * own `pointerdown` listener anchored to the surrounding toolbar, which
+ * had two known bugs:
+ *
+ *   1. Clicking anywhere inside the toolbar (chips area, empty space
+ *      below the menu) did NOT close the menu, because the listener
+ *      compared against the toolbar root rather than the menu itself.
+ *   2. Inside the filters bottom sheet, large empty regions inside the
+ *      sheet content swallowed the close gesture for the same reason.
+ *
+ * Radix portals the content to `document.body` and scopes outside-click
+ * to the popover content itself, fixing both at once.
+ */
 function FilterMultiSelectDropdown({
   idPrefix,
   menuId,
@@ -135,6 +161,28 @@ function FilterMultiSelectDropdown({
 }) {
   const open = openMenu === menuId;
   const listboxDomId = `${idPrefix}-filter-${menuId}-listbox`;
+  /** Radix does not always expose `--radix-popover-trigger-width` in this
+   * stack; measuring the trigger wrapper keeps the menu flush with the
+   * selector (especially full-width rows in the filters bottom sheet). */
+  const triggerMeasureRef = useRef<HTMLDivElement>(null);
+  const [popoverWidthPx, setPopoverWidthPx] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPopoverWidthPx(null);
+      return;
+    }
+    const el = triggerMeasureRef.current;
+    if (!el) return;
+    const sync = () => {
+      const w = el.getBoundingClientRect().width;
+      if (w > 0) setPopoverWidthPx(Math.round(w * 1000) / 1000);
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open]);
 
   const summary = formatSummary
     ? formatSummary(selected)
@@ -144,9 +192,9 @@ function FilterMultiSelectDropdown({
 
   return (
     <div
+      ref={triggerMeasureRef}
       className={cn(
         "relative shrink-0",
-        open && "z-30",
         fullWidth
           ? "w-full min-w-0 max-w-none"
           : compact
@@ -154,59 +202,72 @@ function FilterMultiSelectDropdown({
             : "w-42 min-w-32 max-w-48",
       )}
     >
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className={cn(
-          "w-full min-w-0 justify-between gap-1",
-          compact
-            ? "h-9 min-h-9 px-2.5 py-0"
-            : "h-9 gap-1.5 px-3",
-        )}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        aria-controls={listboxDomId}
-        onClick={() => setOpenMenu(open ? null : menuId)}
+      <Popover
+        open={open}
+        onOpenChange={(next) => setOpenMenu(next ? menuId : null)}
       >
-        <span className="min-w-0 truncate text-left text-sm leading-snug">
-          <span className="text-muted-foreground">{categoryLabel}</span>
-          <span className="text-muted-foreground">: </span>
-          <span
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             className={cn(
-              "tabular-nums text-foreground",
-              compact && "font-semibold",
+              "w-full min-w-0 justify-between gap-1",
+              compact
+                ? "h-9 min-h-9 px-2.5 py-0"
+                : "h-9 gap-1.5 px-3",
             )}
+            aria-haspopup="listbox"
+            aria-controls={open ? listboxDomId : undefined}
           >
-            {summary}
-          </span>
-        </span>
-        <ChevronDown
+            <span className="min-w-0 truncate text-left text-sm leading-snug">
+              <span className="text-muted-foreground">{categoryLabel}</span>
+              <span className="text-muted-foreground">: </span>
+              <span
+                className={cn(
+                  "tabular-nums text-foreground",
+                  compact && "font-semibold",
+                )}
+              >
+                {summary}
+              </span>
+            </span>
+            <ChevronDown
+              className={cn(
+                "shrink-0 text-muted-foreground transition-transform",
+                compact ? "size-3 opacity-80" : "size-3.5",
+                open && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          sideOffset={4}
+          style={
+            popoverWidthPx != null
+              ? { width: popoverWidthPx, minWidth: popoverWidthPx, maxWidth: "none" }
+              : undefined
+          }
           className={cn(
-            "shrink-0 text-muted-foreground transition-transform",
-            compact ? "size-3 opacity-80" : "size-3.5",
-            open && "rotate-180",
+            /* Schedule bottom sheet uses z-[120]; default Popover is z-50
+             * and renders invisibly behind the sheet on narrow viewports. */
+            "z-130",
+            "min-w-0 rounded-md border border-border bg-popover p-0 text-sm leading-snug text-popover-foreground shadow-md",
+            popoverWidthPx == null && "min-w-48 max-w-[min(100vw-1rem,20rem)]",
           )}
-          aria-hidden
-        />
-      </Button>
-      {open ? (
-        <div
-          id={listboxDomId}
-          role="listbox"
-          aria-multiselectable
-          className={cn(
-            "absolute top-full z-100 mt-1 rounded-md border border-border bg-popover py-1 text-sm leading-snug text-popover-foreground shadow-md",
-            fullWidth
-              ? "left-0 right-0 w-full min-w-0"
-              : menuId === "navigator"
-                ? "right-0 left-auto w-[min(100vw-1rem,16rem)] max-w-[min(100vw-1rem,16rem)]"
-                : menuId === "pcp"
-                  ? "left-1/2 w-[min(100vw-1rem,16rem)] max-w-[min(100vw-1rem,16rem)] -translate-x-1/2"
-                  : "left-0 w-[min(100vw-1rem,16rem)] max-w-[min(100vw-1rem,16rem)]",
-          )}
+          /* Prevent Radix from auto-focusing the first interactive child on
+           * open. The trigger still keeps focus visually pressed, and the
+           * checkboxes are reachable via Tab. */
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <div className="max-h-60 overflow-y-auto overscroll-contain py-0.5">
+          <div
+            id={listboxDomId}
+            role="listbox"
+            aria-multiselectable
+            className="max-h-60 overflow-y-auto overscroll-contain py-1"
+          >
             {options.map((opt) => (
               <label
                 key={opt}
@@ -240,8 +301,8 @@ function FilterMultiSelectDropdown({
               Clear filter
             </Button>
           </div>
-        </div>
-      ) : null}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
@@ -263,7 +324,6 @@ export function ScheduleToolbar({
   mobileChromeLeading,
   showPatientSearch = true,
   panelDetachSearchButton = false,
-  scheduleSheetsApiRef,
   panelSheetsOnly = false,
 }: ScheduleToolbarProps) {
   const isMobileChrome = layout === "mobileChrome";
@@ -271,45 +331,18 @@ export function ScheduleToolbar({
   const panelWide = useSchedulePanelInlineWide();
   /** Wide panel: optional collapse mirrors narrow icon row + sheets (`md+`). */
   const [panelWideCollapsed, setPanelWideCollapsed] = useState(false);
-  const panelUsesIconSheets = isPanel && !panelWide;
-  const useSheetChrome = isMobileChrome || panelUsesIconSheets;
-  /** Full-width patient search in mobile chrome, panel (any width), and filter sheets. */
+  /** Full-width patient search in mobile chrome and panel (any width). */
   const searchFieldContainerFullWidth = isMobileChrome || isPanel;
-  const filterChromeRef = useRef<HTMLDivElement>(null);
   const [openFilterMenu, setOpenFilterMenu] = useState<FilterMenuId | null>(
     null,
   );
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-  const [searchSheetOpen, setSearchSheetOpen] = useState(false);
 
-  useEffect(() => {
-    if (!useSheetChrome || !searchSheetOpen) return;
-    const id = `${idPrefix}-patient-search`;
-    const raf = window.requestAnimationFrame(() => {
-      document.getElementById(id)?.focus();
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, [idPrefix, useSheetChrome, searchSheetOpen]);
-
-  useEffect(() => {
-    if (!openFilterMenu) return;
-    const onPointerDown = (e: PointerEvent) => {
-      const el = filterChromeRef.current;
-      if (!el) return;
-      if (e.target instanceof Node && !el.contains(e.target)) {
-        setOpenFilterMenu(null);
-      }
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenFilterMenu(null);
-    };
-    document.addEventListener("pointerdown", onPointerDown, true);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown, true);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [openFilterMenu]);
+  /* Outside-click / Esc dismissal is delegated to Radix Popover inside
+   * `FilterMultiSelectDropdown` — no manual listener needed here. The
+   * `openFilterMenu` state is still tracked in the toolbar so that only
+   * one filter dropdown can be open at a time and so toolbar-level
+   * teardowns (sheet close, panel collapse, clear-all) can force-close it. */
 
   const pcpOptions = useMemo(
     () => collectDistinctSorted(allAppointments.map((a) => a.pcp)),
@@ -330,30 +363,11 @@ export function ScheduleToolbar({
     [allAppointments, selectedPcps, selectedNavigators, selectedBuildingBuckets],
   );
 
-  const afterPatientPickFromSheet = useCallback(() => {
-    setOpenFilterMenu(null);
-    if (useSheetChrome) {
-      setFilterSheetOpen(false);
-      setSearchSheetOpen(false);
-    }
-  }, [useSheetChrome]);
-
-  const openPatientSearchSheet = useCallback(() => {
-    setOpenFilterMenu(null);
-    setFilterSheetOpen(false);
-    setSearchSheetOpen(true);
-  }, []);
-
-  useEffect(() => {
-    if (!scheduleSheetsApiRef) return;
-    scheduleSheetsApiRef.current = {
-      openPatientSearch: openPatientSearchSheet,
-    };
-    return () => {
-      scheduleSheetsApiRef.current = null;
-    };
-  }, [scheduleSheetsApiRef, openPatientSearchSheet]);
-
+  /**
+   * True when at least one axis narrows the schedule. Status chips are
+   * suppressed when both building buckets are selected (same as "All");
+   * that state must not light the filter dot or show "Clear all filters".
+   */
   const hasActiveFilters =
     buildingPresenceFilterNarrows(selectedBuildingBuckets) ||
     selectedPcps.length > 0 ||
@@ -433,18 +447,6 @@ export function ScheduleToolbar({
     </div>
   );
 
-  const searchInSheet = (
-    <SchedulePatientSearch
-      idPrefix={idPrefix}
-      allAppointments={allAppointments}
-      patientSearchQuery={patientSearchQuery}
-      onPatientSearchQueryChange={onPatientSearchQueryChange}
-      onNavigateToAppointment={onNavigateToAppointment}
-      fullWidth
-      onAfterPick={afterPatientPickFromSheet}
-    />
-  );
-
   const searchInToolbar = showPatientSearch ? (
     <SchedulePatientSearch
       idPrefix={idPrefix}
@@ -458,29 +460,31 @@ export function ScheduleToolbar({
 
   const filterChips = (
     <>
-      {selectedBuildingBuckets.map((b) => (
-        <Badge
-          key={`status-${b}`}
-          variant="secondary"
-          className="max-w-full shrink-0 gap-0.5 py-0 pl-2 pr-0.5 font-normal"
-        >
-          <span className="min-w-0 truncate">
-            {BUILDING_PRESENCE_BUCKET_LABEL[b]}
-          </span>
-          <button
-            type="button"
-            className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label={`Remove ${BUILDING_PRESENCE_BUCKET_LABEL[b]} status filter`}
-            onClick={() =>
-              onChangeSelectedBuildingBuckets(
-                selectedBuildingBuckets.filter((x) => x !== b),
-              )
-            }
-          >
-            <X className="size-3.5" aria-hidden />
-          </button>
-        </Badge>
-      ))}
+      {buildingPresenceFilterNarrows(selectedBuildingBuckets)
+        ? selectedBuildingBuckets.map((b) => (
+            <Badge
+              key={`status-${b}`}
+              variant="secondary"
+              className="max-w-full shrink-0 gap-0.5 py-0 pl-2 pr-0.5 font-normal"
+            >
+              <span className="min-w-0 truncate">
+                {BUILDING_PRESENCE_BUCKET_LABEL[b]}
+              </span>
+              <button
+                type="button"
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label={`Remove ${BUILDING_PRESENCE_BUCKET_LABEL[b]} status filter`}
+                onClick={() =>
+                  onChangeSelectedBuildingBuckets(
+                    selectedBuildingBuckets.filter((x) => x !== b),
+                  )
+                }
+              >
+                <X className="size-3.5" aria-hidden />
+              </button>
+            </Badge>
+          ))
+        : null}
       {selectedPcps.map((pcp) => (
         <Badge
           key={`pcp-${pcp}`}
@@ -600,69 +604,53 @@ export function ScheduleToolbar({
 
   const sheetFrameClass = scheduleBottomSheetContentClass();
 
-  const filterSearchSheets = (
-    <>
-      <Sheet
-        open={filterSheetOpen}
-        onOpenChange={(open) => {
-          setFilterSheetOpen(open);
-          if (!open) setOpenFilterMenu(null);
-        }}
+  /**
+   * Filters bottom sheet. Patient search used to live in a sibling
+   * sheet here; on mobile that's been replaced by an inline
+   * expand-in-title-bar UX owned by `ClinicFlowMobile`, so this is the
+   * only sheet the toolbar still owns.
+   */
+  const filterSheetPortal = (
+    <Sheet
+      open={filterSheetOpen}
+      onOpenChange={(open) => {
+        setFilterSheetOpen(open);
+        if (!open) setOpenFilterMenu(null);
+      }}
+    >
+      <SheetContent
+        side="bottom"
+        overlayClassName={SCHEDULE_SHEET_OVERLAY_CLASS}
+        className={sheetFrameClass}
       >
-        <SheetContent
-          side="bottom"
-          overlayClassName={SCHEDULE_SHEET_OVERLAY_CLASS}
-          className={sheetFrameClass}
-        >
-          <SheetHeader className={SCHEDULE_BOTTOM_SHEET_HEADER_CLASS}>
-            <SheetTitle className={SCHEDULE_BOTTOM_SHEET_TITLE_CLASS}>
-              Schedule filters
-            </SheetTitle>
-          </SheetHeader>
-          <div className={SCHEDULE_BOTTOM_SHEET_BODY_OUTER_CLASS}>
-            <div
-              ref={filterChromeRef}
-              className={cn(
-                SCHEDULE_BOTTOM_SHEET_BODY_SCROLL_CLASS,
-                "flex flex-col gap-4 px-2",
-              )}
-            >
-              <div className="flex w-full min-w-0 flex-col gap-2">
-                {filterDropdownControls({ fullWidth: true, compact: true })}
-              </div>
-              {filterSummaryChipsAndClear}
+        <SheetHeader className={SCHEDULE_BOTTOM_SHEET_HEADER_CLASS}>
+          <SheetTitle className={SCHEDULE_BOTTOM_SHEET_TITLE_CLASS}>
+            Schedule filters
+          </SheetTitle>
+        </SheetHeader>
+        <div className={SCHEDULE_BOTTOM_SHEET_BODY_OUTER_CLASS}>
+          <div
+            className={cn(
+              SCHEDULE_BOTTOM_SHEET_BODY_SCROLL_CLASS,
+              "flex flex-col gap-4 px-2",
+            )}
+          >
+            <div className="flex w-full min-w-0 flex-col gap-2">
+              {filterDropdownControls({ fullWidth: true, compact: true })}
             </div>
+            {filterSummaryChipsAndClear}
           </div>
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={searchSheetOpen} onOpenChange={setSearchSheetOpen}>
-        <SheetContent
-          side="bottom"
-          overlayClassName={SCHEDULE_SHEET_OVERLAY_CLASS}
-          className={sheetFrameClass}
-        >
-          <SheetHeader className={SCHEDULE_BOTTOM_SHEET_HEADER_CLASS}>
-            <SheetTitle className={SCHEDULE_BOTTOM_SHEET_TITLE_CLASS}>
-              Patient search
-            </SheetTitle>
-          </SheetHeader>
-          <div className={SCHEDULE_BOTTOM_SHEET_BODY_OUTER_CLASS}>
-            <div className={cn(SCHEDULE_BOTTOM_SHEET_BODY_SCROLL_CLASS, "px-2")}>
-              {searchInSheet}
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 
   const panelIconRow = (opts: {
     onOpenFilters: () => void;
-    onOpenSearch: () => void;
     filtersActiveDot: boolean;
     pressedFilters: boolean;
-    pressedSearch: boolean;
+    /** When true, the search affordance is provided by the parent
+     * (Clinic Flow mobile title bar) so this row only renders filters. */
     hideSearchButton?: boolean;
   }) => (
     <div
@@ -674,19 +662,6 @@ export function ScheduleToolbar({
     >
       {panelMatchCountLine}
       <div className="flex shrink-0 items-center gap-1.5">
-        {!opts.hideSearchButton ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9 shrink-0 rounded-lg"
-            aria-label="Open patient search"
-            aria-pressed={opts.pressedSearch}
-            onClick={opts.onOpenSearch}
-          >
-            <Search className="size-5 text-foreground" aria-hidden />
-          </Button>
-        ) : null}
         <Button
           type="button"
           variant="ghost"
@@ -713,7 +688,7 @@ export function ScheduleToolbar({
   );
 
   if (isPanel && panelSheetsOnly) {
-    return <>{filterSearchSheets}</>;
+    return filterSheetPortal;
   }
 
   if (isPanel && panelWide && panelWideCollapsed) {
@@ -751,7 +726,6 @@ export function ScheduleToolbar({
             onClick={() => {
               setOpenFilterMenu(null);
               setFilterSheetOpen(false);
-              setSearchSheetOpen(false);
               setPanelWideCollapsed(true);
             }}
           >
@@ -759,7 +733,6 @@ export function ScheduleToolbar({
           </Button>
         </div>
         <div
-          ref={filterChromeRef}
           className={cn(
             "flex min-w-0 w-full flex-col px-4 pb-3 pt-1.5",
             hasActiveFilters ? "gap-2" : "gap-0",
@@ -781,19 +754,12 @@ export function ScheduleToolbar({
         {panelIconRow({
           filtersActiveDot: filtersApplied,
           pressedFilters: filterSheetOpen,
-          pressedSearch: searchSheetOpen,
           hideSearchButton: panelDetachSearchButton,
           onOpenFilters: () => {
-            setSearchSheetOpen(false);
             setFilterSheetOpen(true);
           },
-          onOpenSearch: () => {
-            setOpenFilterMenu(null);
-            setFilterSheetOpen(false);
-            setSearchSheetOpen(true);
-          },
         })}
-        {filterSearchSheets}
+        {filterSheetPortal}
       </>
     );
   }
@@ -825,7 +791,6 @@ export function ScheduleToolbar({
                   : "Open schedule filters"
               }
               onClick={() => {
-                setSearchSheetOpen(false);
                 setFilterSheetOpen(true);
               }}
             >
@@ -837,24 +802,10 @@ export function ScheduleToolbar({
                 />
               ) : null}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-9 shrink-0 rounded-lg"
-              aria-label="Open patient search"
-              onClick={() => {
-                setOpenFilterMenu(null);
-                setFilterSheetOpen(false);
-                setSearchSheetOpen(true);
-              }}
-            >
-              <Search className="size-5 text-foreground" aria-hidden />
-            </Button>
           </div>
         </div>
 
-        {filterSearchSheets}
+        {filterSheetPortal}
       </>
     );
   }
@@ -867,10 +818,7 @@ export function ScheduleToolbar({
           insetWithWorkspace ? "px-0" : "px-4 md:px-6",
         )}
       >
-        <div
-          ref={filterChromeRef}
-          className="flex min-w-0 w-full flex-col gap-4"
-        >
+        <div className="flex min-w-0 w-full flex-col gap-4">
           {controlsRow}
           {filterSummaryRow}
         </div>

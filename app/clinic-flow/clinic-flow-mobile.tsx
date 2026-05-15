@@ -1,5 +1,8 @@
 "use client";
 
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { Search, X } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,7 +30,7 @@ import {
   ScheduleViewToggle,
   type ScheduleViewMode,
 } from "./schedule-view-toggle";
-import { Search } from "lucide-react";
+import { SchedulePatientSearch } from "./schedule-patient-search";
 
 import {
   ScheduleToolbar,
@@ -64,6 +67,13 @@ export type ClinicFlowMobileProps = {
   className?: string;
 };
 
+/** Same visual width as desktop header compact search (`md:w-64`). */
+const MOBILE_SEARCH_FIELD_WIDTH_PX = 256;
+const HEADER_ICON_PX = 36; /* size-9 */
+const HEADER_GAP_PX = 8; /* gap-2 */
+/** Minimum horizontal space for the page title before we drop to search takeover. */
+const TITLE_MIN_FOR_INLINE_PX = 100;
+
 export function ClinicFlowMobile({
   mobileTab,
   onMobileTabChange,
@@ -84,6 +94,73 @@ export function ClinicFlowMobile({
   onOpenPatientProfile,
   className,
 }: ClinicFlowMobileProps) {
+  /**
+   * Inline patient-search expansion in the mobile title bar.
+   *
+   * Tapping the magnifier swaps the default chrome (sidebar + title +
+   * search icon) for a row with a fixed-width field (256px, matching
+   * desktop `md:w-64`), an X to dismiss on the right, and the same
+   * `SchedulePatientSearch` listbox as desktop.
+   *
+   * When the row is too narrow for sidebar + title + fixed field + X,
+   * the sidebar and title hide so the input can grow to full width.
+   */
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  /** When true, the row is too narrow for sidebar + title + fixed search + X; hide chrome so search fills the row. */
+  const [searchTakeover, setSearchTakeover] = useState(false);
+  const headerBarRef = useRef<HTMLDivElement>(null);
+  const searchIdPrefix = useId();
+  /* `SchedulePatientSearch` builds its `<input>` id as
+   * `${idPrefix}-patient-search` — mirror that here so the focus
+   * effect targets the correct element. */
+  const searchInputDomId = `${searchIdPrefix}-patient-search`;
+
+  useLayoutEffect(() => {
+    if (!searchExpanded) {
+      setSearchTakeover(false);
+      return;
+    }
+    const el = headerBarRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const padX =
+        parseFloat(cs.paddingLeft || "0") + parseFloat(cs.paddingRight || "0");
+      const inner = Math.max(0, r.width - padX);
+      const needInline =
+        HEADER_ICON_PX +
+        HEADER_GAP_PX +
+        TITLE_MIN_FOR_INLINE_PX +
+        HEADER_GAP_PX +
+        MOBILE_SEARCH_FIELD_WIDTH_PX +
+        HEADER_GAP_PX +
+        HEADER_ICON_PX;
+      setSearchTakeover(inner < needInline);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [searchExpanded]);
+
+  useEffect(() => {
+    if (!searchExpanded) return;
+    /* Focus AFTER the title bar layout settles so iOS / Android raise
+     * the keyboard predictably and the listbox anchors below the
+     * already-laid-out input. */
+    const raf = window.requestAnimationFrame(() => {
+      document.getElementById(searchInputDomId)?.focus();
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [searchExpanded, searchInputDomId, searchTakeover]);
+
+  const collapseSearch = useCallback(() => {
+    setSearchExpanded(false);
+    setSearchTakeover(false);
+    scheduleToolbarProps.onPatientSearchQueryChange("");
+  }, [scheduleToolbarProps]);
+
   return (
     <div
       className={cn(
@@ -100,27 +177,74 @@ export function ClinicFlowMobile({
       >
         <div className="relative z-100 flex w-full min-w-full shrink-0 flex-col bg-background p-0">
           <div
+            ref={headerBarRef}
             className={cn(
               "flex h-12 w-full min-w-0 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-3",
               textBody,
             )}
           >
-            <SidebarTrigger className="shrink-0" />
-            <h1 className="min-w-0 flex-1 truncate text-lg font-semibold leading-tight tracking-tight">
-              {CLINIC_FLOW_PAGE_TITLE}
-            </h1>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-9 shrink-0 rounded-lg"
-              aria-label="Open patient search"
-              onClick={() =>
-                scheduleToolbarProps.scheduleSheetsApiRef?.current?.openPatientSearch()
-              }
-            >
-              <Search className="size-5 text-foreground" aria-hidden />
-            </Button>
+            {searchExpanded ? (
+              <>
+                {searchTakeover ? null : (
+                  <>
+                    <SidebarTrigger className="shrink-0" />
+                    <h1 className="min-w-0 flex-1 truncate text-lg font-semibold leading-tight tracking-tight">
+                      {CLINIC_FLOW_PAGE_TITLE}
+                    </h1>
+                  </>
+                )}
+                <div
+                  className={cn(
+                    "min-w-0",
+                    searchTakeover ? "flex-1" : "w-64 shrink-0",
+                  )}
+                >
+                  <SchedulePatientSearch
+                    idPrefix={searchIdPrefix}
+                    allAppointments={scheduleToolbarProps.allAppointments}
+                    patientSearchQuery={scheduleToolbarProps.patientSearchQuery}
+                    onPatientSearchQueryChange={
+                      scheduleToolbarProps.onPatientSearchQueryChange
+                    }
+                    onNavigateToAppointment={
+                      scheduleToolbarProps.onNavigateToAppointment
+                    }
+                    onAfterPick={() => {
+                      setSearchExpanded(false);
+                      setSearchTakeover(false);
+                    }}
+                    fullWidth
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-9 shrink-0 rounded-lg"
+                  aria-label="Close patient search"
+                  onClick={collapseSearch}
+                >
+                  <X className="size-5 text-foreground" aria-hidden />
+                </Button>
+              </>
+            ) : (
+              <>
+                <SidebarTrigger className="shrink-0" />
+                <h1 className="min-w-0 flex-1 truncate text-lg font-semibold leading-tight tracking-tight">
+                  {CLINIC_FLOW_PAGE_TITLE}
+                </h1>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-9 shrink-0 rounded-lg"
+                  aria-label="Open patient search"
+                  onClick={() => setSearchExpanded(true)}
+                >
+                  <Search className="size-5 text-foreground" aria-hidden />
+                </Button>
+              </>
+            )}
           </div>
           <TabsList
             variant="line"
