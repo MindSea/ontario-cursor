@@ -635,3 +635,20 @@ export function getPatientProfileSeed(
 ): PatientProfileAggregate | null {
   return buildPatientProfileSeedMap().get(patientId) ?? null;
 }
+
+/** Roster metadata for Inbox filters and the add-task patient picker. */
+export function listPatientsForPanelInbox(): readonly {
+  patientId: PatientId;
+  displayName: string;
+  dateOfBirth: string;
+  pcpDisplayName: string;
+  navigatorDisplayName: string;
+}[] {
+  return Array.from(buildPatientProfileSeedMap().values(), (agg) => ({
+    patientId: agg.summary.patientId,
+    displayName: agg.summary.displayName,
+    dateOfBirth: agg.demographics.dateOfBirth,
+    pcpDisplayName: agg.summary.pcpDisplayName,
+    navigatorDisplayName: agg.summary.navigatorDisplayName,
+  }));
+}

@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppointmentsStoreProvider } from "@/app/clinic-flow/appointments-store";
 import { MessagingStoreProvider } from "@/app/messaging/messaging-store";
+import { PanelTasksStoreProvider } from "@/app/patient-profile/panel-tasks-store";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({
@@ -41,7 +42,9 @@ export default function RootLayout({
            * under /messaging). */}
           <AppointmentsStoreProvider>
             <MessagingStoreProvider>
-              <AppShell>{children}</AppShell>
+              <PanelTasksStoreProvider>
+                <AppShell>{children}</AppShell>
+              </PanelTasksStoreProvider>
             </MessagingStoreProvider>
           </AppointmentsStoreProvider>
         </TooltipProvider>
