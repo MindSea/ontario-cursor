@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight as ChevronRightIcon } from "lucide-react";
 
-import { textBody, textMeta } from "@/lib/typography";
+import { textBody } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 import {
@@ -181,57 +181,62 @@ export function InboxTaskBoard({
     [updatePatientTasks, showToast, tasksByPatient],
   );
 
+  const showActiveSection =
+    active.length > 0 || Boolean(addForm) || Boolean(addButtonSlot);
+
   return (
-    <div>
-      <div className="mb-2 flex min-h-7 flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <h3 className={cn("m-0 font-medium text-foreground", textBody)}>
-            Active tasks{" "}
-            <span className="font-normal text-muted-foreground">
-              ({active.length})
-            </span>
-          </h3>
-          {overdueCount > 0 ? (
-            <span
-              className={cn(
-                "inline-flex h-5 items-center rounded-full bg-destructive/10 px-2 text-sm font-medium leading-none",
-                "text-destructive",
-              )}
-            >
-              {overdueCount} overdue
-            </span>
+    <div className="max-md:pt-2">
+      {showActiveSection ? (
+        <>
+          <div className="mb-3 flex min-h-7 flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h3 className={cn("m-0 font-medium text-foreground", textBody)}>
+                Active tasks{" "}
+                <span className="font-normal text-muted-foreground">
+                  ({active.length})
+                </span>
+              </h3>
+              {overdueCount > 0 ? (
+                <span
+                  className={cn(
+                    "inline-flex h-5 items-center rounded-full bg-destructive/10 px-2 text-sm font-medium leading-none",
+                    "text-destructive",
+                  )}
+                >
+                  {overdueCount} overdue
+                </span>
+              ) : null}
+            </div>
+            {addButtonSlot ?? null}
+          </div>
+
+          {addForm ? <div className="mb-3">{addForm}</div> : null}
+
+          {active.length > 0 ? (
+            <ul className="m-0 list-none space-y-2 p-0">
+              {active.map((row) => (
+                <li key={`${row.patientId}:${row.task.id}`}>
+                  <TaskRow
+                    task={row.task}
+                    today={today}
+                    attribution={taskAttribution(row, onOpenPatientProfile)}
+                    onChange={(patch) =>
+                      handleUpdate(row.patientId, row.task.id, patch)
+                    }
+                    onStageChange={(s) =>
+                      handleStageChange(row.patientId, row.task.id, s)
+                    }
+                    onDelete={() => handleDelete(row.patientId, row.task.id)}
+                  />
+                </li>
+              ))}
+            </ul>
           ) : null}
-        </div>
-        {addButtonSlot ?? null}
-      </div>
-
-      {addForm ? <div className="mb-3">{addForm}</div> : null}
-
-      {active.length === 0 ? (
-        <p className={cn("text-muted-foreground", textMeta)}>
-          No active tasks match your filters.
-        </p>
-      ) : (
-        <ul className="m-0 list-none space-y-2 p-0">
-          {active.map((row) => (
-            <li key={`${row.patientId}:${row.task.id}`}>
-              <TaskRow
-                task={row.task}
-                today={today}
-                attribution={taskAttribution(row, onOpenPatientProfile)}
-                onChange={(patch) => handleUpdate(row.patientId, row.task.id, patch)}
-                onStageChange={(s) =>
-                  handleStageChange(row.patientId, row.task.id, s)
-                }
-                onDelete={() => handleDelete(row.patientId, row.task.id)}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
+        </>
+      ) : null}
 
       {resolved.length > 0 ? (
-        <div className="mt-4">
+        <div className="mt-3">
           <h3 className="m-0">
             <button
               type="button"

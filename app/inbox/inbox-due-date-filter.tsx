@@ -1,17 +1,18 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+
+import { InboxDueDatePresetPicker } from "./inbox-due-date-preset-picker";
 
 export type InboxDatePreset = "all" | "today" | "next3" | "custom";
 
@@ -20,10 +21,6 @@ const PRESET_LABEL: Record<Exclude<InboxDatePreset, "custom">, string> = {
   today: "Today",
   next3: "Next 3 days",
 };
-
-/** Chip styling aligned with task `DueDateChip` neutral (`none`) tone. */
-const RANGE_PICKER_CHIP =
-  "inline-flex h-8 w-full min-w-0 items-center gap-1.5 rounded-lg border border-input bg-transparent px-2.5 text-base text-muted-foreground transition-colors hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none";
 
 export function summaryForDueDateFilter(
   preset: InboxDatePreset,
@@ -58,6 +55,7 @@ export function InboxDueDateFilterDropdown({
   menuId,
   fullWidth = false,
   compact = false,
+  popoverClassName,
 }: {
   idPrefix: string;
   preset: InboxDatePreset;
@@ -71,12 +69,13 @@ export function InboxDueDateFilterDropdown({
   menuId: string;
   fullWidth?: boolean;
   compact?: boolean;
+  /** Extra classes for popover content (e.g. lift above a bottom sheet). */
+  popoverClassName?: string;
 }) {
   const open = openMenu === menuId;
   const listboxDomId = `${idPrefix}-due-date-filter`;
   const triggerMeasureRef = useRef<HTMLDivElement>(null);
   const [popoverWidthPx, setPopoverWidthPx] = useState<number | null>(null);
-  const radioName = `${idPrefix}-due-date-preset`;
 
   useLayoutEffect(() => {
     if (!open) {
@@ -96,13 +95,6 @@ export function InboxDueDateFilterDropdown({
   }, [open]);
 
   const summary = summaryForDueDateFilter(preset, customFrom, customTo);
-
-  const presets: { key: InboxDatePreset; label: string }[] = [
-    { key: "all", label: "All" },
-    { key: "today", label: "Today" },
-    { key: "next3", label: "Next 3 days" },
-    { key: "custom", label: "Custom range" },
-  ];
 
   return (
     <div
@@ -169,107 +161,24 @@ export function InboxDueDateFilterDropdown({
             "z-130",
             "min-w-0 rounded-md border border-border bg-popover p-0 text-sm leading-snug text-popover-foreground shadow-md",
             popoverWidthPx == null && "min-w-48 max-w-[min(100vw-1rem,20rem)]",
+            popoverClassName,
           )}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <fieldset className="m-0 max-h-60 overflow-y-auto overscroll-contain border-0 p-0">
-            <legend className="sr-only">Due date filter</legend>
-            {presets.map(({ key, label }) => (
-              <label
-                key={key}
-                className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5 hover:bg-muted"
-              >
-                <input
-                  type="radio"
-                  name={radioName}
-                  value={key}
-                  checked={preset === key}
-                  className="size-4 shrink-0 accent-foreground"
-                  onChange={() => {
-                    onPresetChange(key);
-                    if (key !== "custom") {
-                      onCustomFromChange(undefined);
-                      onCustomToChange(undefined);
-                      setOpenMenu(null);
-                    }
-                  }}
-                />
-                <span className="min-w-0 leading-snug">{label}</span>
-              </label>
-            ))}
-          </fieldset>
-          {preset === "custom" ? (
-            <div className="space-y-3 border-t border-border/60 p-3">
-              <div className="grid gap-1.5">
-                <span className="text-muted-foreground text-xs">From</span>
-                <DatePicker
-                  value={customFrom}
-                  onChange={onCustomFromChange}
-                  contentClassName="z-1000"
-                >
-                  <button
-                    type="button"
-                    className={RANGE_PICKER_CHIP}
-                    aria-label="Custom range start date"
-                  >
-                    <CalendarIcon
-                      className="size-3.5 shrink-0 text-muted-foreground"
-                      aria-hidden
-                    />
-                    {customFrom ? (
-                      <span className="min-w-0 truncate tabular-nums text-foreground">
-                        {format(parseISO(customFrom), "MMM d, yyyy")}
-                      </span>
-                    ) : (
-                      <span>Select date</span>
-                    )}
-                  </button>
-                </DatePicker>
-              </div>
-              <div className="grid gap-1.5">
-                <span className="text-muted-foreground text-xs">To</span>
-                <DatePicker
-                  value={customTo}
-                  onChange={onCustomToChange}
-                  contentClassName="z-1000"
-                >
-                  <button
-                    type="button"
-                    className={RANGE_PICKER_CHIP}
-                    aria-label="Custom range end date"
-                  >
-                    <CalendarIcon
-                      className="size-3.5 shrink-0 text-muted-foreground"
-                      aria-hidden
-                    />
-                    {customTo ? (
-                      <span className="min-w-0 truncate tabular-nums text-foreground">
-                        {format(parseISO(customTo), "MMM d, yyyy")}
-                      </span>
-                    ) : (
-                      <span>Select date</span>
-                    )}
-                  </button>
-                </DatePicker>
-              </div>
-            </div>
-          ) : null}
-          <div className="border-t border-border/60 p-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-9 w-full justify-center text-sm leading-snug text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                onPresetChange("all");
-                onCustomFromChange(undefined);
-                onCustomToChange(undefined);
-                setOpenMenu(null);
-              }}
-            >
-              Clear filter
-            </Button>
-          </div>
+          <InboxDueDatePresetPicker
+            preset={preset}
+            onPresetChange={onPresetChange}
+            customFrom={customFrom}
+            customTo={customTo}
+            onCustomFromChange={onCustomFromChange}
+            onCustomToChange={onCustomToChange}
+            onClear={() => {
+              onPresetChange("all");
+              onCustomFromChange(undefined);
+              onCustomToChange(undefined);
+            }}
+            onPresetApplied={() => setOpenMenu(null)}
+          />
         </PopoverContent>
       </Popover>
     </div>

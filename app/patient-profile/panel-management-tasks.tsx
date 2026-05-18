@@ -157,6 +157,32 @@ export function compareResolvedTasks(
   );
 }
 
+export function getActiveTasksSorted(
+  tasks: readonly LongTermPanelTask[],
+  today: Date,
+): LongTermPanelTask[] {
+  const active = tasks.filter((t) => t.stage !== "resolved");
+  active.sort((a, b) => compareActiveTasks(a, b, today));
+  return active;
+}
+
+/** Sort patients with active work ahead of idle patients; tie-break by top task. */
+export function comparePatientsByActiveTasks(
+  aTasks: readonly LongTermPanelTask[],
+  bTasks: readonly LongTermPanelTask[],
+  aName: string,
+  bName: string,
+  today: Date,
+): number {
+  const aActive = getActiveTasksSorted(aTasks, today);
+  const bActive = getActiveTasksSorted(bTasks, today);
+  const aHas = aActive.length > 0;
+  const bHas = bActive.length > 0;
+  if (aHas !== bHas) return aHas ? -1 : 1;
+  if (!aHas && !bHas) return aName.localeCompare(bName);
+  return compareActiveTasks(aActive[0], bActive[0], today);
+}
+
 export function makeTaskId(): string {
   if (
     typeof crypto !== "undefined" &&
@@ -189,6 +215,9 @@ export function PanelTasksSection({
   setTasks,
   showToast,
   addButtonSlot,
+  embeddedInPatientCard = false,
+  isAdding: isAddingProp,
+  onIsAddingChange,
 }: {
   tasks: readonly LongTermPanelTask[];
   setTasks: Dispatch<SetStateAction<readonly LongTermPanelTask[]>>;
@@ -199,8 +228,14 @@ export function PanelTasksSection({
    * primary button outside the row).
    */
   addButtonSlot?: ReactNode;
+  /** Panel Management patient cards: active tasks only, no section chrome. */
+  embeddedInPatientCard?: boolean;
+  isAdding?: boolean;
+  onIsAddingChange?: (open: boolean) => void;
 }) {
-  const [isAdding, setIsAdding] = useState(false);
+  const [isAddingInternal, setIsAddingInternal] = useState(false);
+  const isAdding = isAddingProp ?? isAddingInternal;
+  const setIsAdding = onIsAddingChange ?? setIsAddingInternal;
   const [showResolved, setShowResolved] = useState(false);
 
   const today = useMemo(() => startOfDay(new Date()), []);
@@ -225,7 +260,7 @@ export function PanelTasksSection({
       setTasks((prev) => [...prev, task]);
       setIsAdding(false);
     },
-    [setTasks],
+    [setTasks, setIsAdding],
   );
 
   const handleUpdate = useCallback(
@@ -315,7 +350,8 @@ export function PanelTasksSection({
 
   return (
     <div>
-      <div className="mb-2 flex min-h-7 flex-wrap items-center justify-between gap-2">
+      {!embeddedInPatientCard ? (
+        <div className="mb-2 flex min-h-7 flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h3 className={cn("m-0 font-medium text-foreground", textBody)}>
             Active tasks{" "}
@@ -347,40 +383,51 @@ export function PanelTasksSection({
             Add task
           </Button>
         ) : null}
-      </div>
-
-      {isAdding ? (
-        <div className="mb-3">
-          <TaskAddForm
-            onAdd={handleAdd}
-            onCancel={() => setIsAdding(false)}
-            today={today}
-          />
         </div>
       ) : null}
 
-      {active.length === 0 ? (
-        <p className={cn("text-muted-foreground", textMeta)}>
-          No active tasks.
-        </p>
-      ) : (
-        <ul className="m-0 list-none space-y-2 p-0">
-          {active.map((task) => (
-            <li key={task.id}>
-              <TaskRow
-                task={task}
-                today={today}
-                onChange={(patch) => handleUpdate(task.id, patch)}
-                onStageChange={(s) => handleStageChange(task.id, s)}
-                onDelete={() => handleDelete(task.id)}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
+      <div
+        className={cn(
+          embeddedInPatientCard &&
+            (isAdding || active.length > 0) &&
+            "mt-3 space-y-3",
+        )}
+      >
+        {isAdding ? (
+          <div className={cn(!embeddedInPatientCard && "mb-3")}>
+            <TaskAddForm
+              onAdd={handleAdd}
+              onCancel={() => setIsAdding(false)}
+              today={today}
+            />
+          </div>
+        ) : null}
 
-      {resolved.length > 0 ? (
-        <div className="mt-4">
+        {active.length === 0 ? (
+          embeddedInPatientCard ? null : (
+            <p className={cn("text-muted-foreground", textMeta)}>
+              No active tasks.
+            </p>
+          )
+        ) : (
+          <ul className="m-0 list-none space-y-2 p-0">
+            {active.map((task) => (
+              <li key={task.id}>
+                <TaskRow
+                  task={task}
+                  today={today}
+                  onChange={(patch) => handleUpdate(task.id, patch)}
+                  onStageChange={(s) => handleStageChange(task.id, s)}
+                  onDelete={() => handleDelete(task.id)}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {!embeddedInPatientCard && resolved.length > 0 ? (
+        <div className="mt-3">
           <h3 className="m-0">
             <button
               type="button"
@@ -458,12 +505,14 @@ export function TaskRow({
         textBody,
       )}
     >
-      <div className="flex items-center gap-1.5">
-        <PinToggle
-          isPinned={task.isPinned}
-          onChange={(v) => onChange({ isPinned: v })}
-        />
-        <div className="min-w-0 flex-1">
+      <div className="flex items-start gap-1.5">
+        <div className="flex h-8 w-7 shrink-0 items-center justify-center">
+          <PinToggle
+            isPinned={task.isPinned}
+            onChange={(v) => onChange({ isPinned: v })}
+          />
+        </div>
+        <div className="flex min-h-8 min-w-0 flex-1 items-center">
           <InlineEditableText
             value={task.title}
             onChange={(v) => {
@@ -471,23 +520,28 @@ export function TaskRow({
               if (next) onChange({ title: next });
             }}
             readOnly={!editable}
+            compactSingleLine
             className="font-medium text-foreground"
             ariaLabel="Task title"
           />
         </div>
-        <SourceChip source={task.source} />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="-mr-1 size-7 shrink-0 text-muted-foreground hover:text-destructive"
-          aria-label={`Delete task ${task.title}`}
-          onClick={onDelete}
-        >
-          <Trash2 className="size-4" aria-hidden />
-        </Button>
+        <div className="flex h-8 shrink-0 items-center gap-0.5">
+          <SourceChip source={task.source} />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="-mr-1 size-7 shrink-0 text-muted-foreground hover:text-destructive"
+            aria-label={`Delete task ${task.title}`}
+            onClick={onDelete}
+          >
+            <Trash2 className="size-4" aria-hidden />
+          </Button>
+        </div>
       </div>
-      <div className={cn("pl-9", attribution && "space-y-2")}>
+      <div
+        className={cn("pl-9", attribution ? "mt-2 space-y-2" : undefined)}
+      >
         {attribution ? (
           <div className={cn("text-muted-foreground", textMeta)}>
             {attribution}
@@ -527,9 +581,11 @@ export function TaskRow({
 function PinToggle({
   isPinned,
   onChange,
+  className,
 }: {
   isPinned: boolean;
   onChange: (next: boolean) => void;
+  className?: string;
 }) {
   return (
     <Button
@@ -538,6 +594,7 @@ function PinToggle({
       size="icon"
       className={cn(
         "size-7 shrink-0",
+        className,
         isPinned
           ? "text-foreground hover:text-foreground"
           : "text-muted-foreground/40 hover:text-foreground",

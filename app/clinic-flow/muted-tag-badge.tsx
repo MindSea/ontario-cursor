@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 /** Layout shared by all muted-style tags (height, radius, padding, type). */
 export const mutedTagBadgeLayoutClass =
-  "h-6 min-h-6 w-fit shrink-0 justify-center overflow-hidden rounded-md px-2 py-0 font-medium leading-none";
+  "h-6 min-h-6 w-fit shrink-0 justify-center overflow-hidden rounded-md px-2 py-0 text-sm font-medium leading-none";
 
 /** Previsit / panels on `bg-background`: soft fill, no border (matches workspace chips). */
 export const mutedTagBadgeSurfacePanelClass =

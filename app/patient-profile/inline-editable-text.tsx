@@ -23,6 +23,11 @@ export type InlineEditableTextProps = {
   className?: string;
   /** Edit-mode className applied on top of the input/textarea defaults. */
   editClassName?: string;
+  /**
+   * Single-line only: compact edit input (`h-8`) and top-aligned display text
+   * for task title rows. Pair with `TaskRow` action bands (`h-8` sidecars).
+   */
+  compactSingleLine?: boolean;
   ariaLabel?: string;
 };
 
@@ -43,6 +48,7 @@ export function InlineEditableText({
   emptyAffordance,
   className,
   editClassName,
+  compactSingleLine = false,
   ariaLabel,
 }: InlineEditableTextProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -156,7 +162,10 @@ export function InlineEditableText({
         onKeyDown={handleKeyDown}
         aria-label={ariaLabel}
         className={cn(
-          "block w-full rounded-md border border-input bg-transparent px-2 py-1 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
+          "block w-full rounded-md border border-input bg-transparent outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
+          compactSingleLine
+            ? "h-8 min-h-8 px-2 py-0 text-base leading-snug"
+            : "px-2 py-1",
           editClassName,
         )}
       />
@@ -176,7 +185,7 @@ export function InlineEditableText({
     );
   }
 
-  return (
+  const display = (
     <span
       role={readOnly ? undefined : "button"}
       tabIndex={readOnly ? undefined : 0}
@@ -198,7 +207,10 @@ export function InlineEditableText({
         // with NO natural breaks — long emails (`a.b@c.example.com`),
         // URLs, and big IDs — so they wrap to the next line instead of
         // overflowing the container.
-        "block whitespace-pre-wrap wrap-break-word rounded-sm px-1 py-0.5 -mx-1 -my-0.5",
+        "block whitespace-pre-wrap wrap-break-word rounded-sm",
+        compactSingleLine
+          ? "px-1 leading-snug"
+          : "px-1 py-0.5 -mx-1 -my-0.5",
         !readOnly &&
           "cursor-text hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none",
         className,
@@ -207,4 +219,6 @@ export function InlineEditableText({
       {value}
     </span>
   );
+
+  return display;
 }

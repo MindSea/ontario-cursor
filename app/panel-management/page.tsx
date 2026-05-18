@@ -8,74 +8,25 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { addDays, format, isSameDay, parseISO, startOfDay } from "date-fns";
-import { Plus } from "lucide-react";
 
-import { PatientProfileDialog } from "@/app/patient-profile/patient-profile-dialog";
-import { TaskAddForm } from "@/app/patient-profile/panel-management-tasks";
-import { listPatientsForPanelInbox } from "@/app/patient-profile/patient-profile-seed";
-import { usePanelTasksStore } from "@/app/patient-profile/panel-tasks-store";
-import { usePatientProfileUrlState } from "@/app/patient-profile/use-patient-profile-url-state";
-import type { LongTermPanelTask, PatientId } from "@/app/patient-profile/types";
 import { ScheduleFilterMultiSelectDropdown } from "@/app/clinic-flow/schedule-filter-multiselect-dropdown";
-import {
-  InboxDueDateFilterDropdown,
-  type InboxDatePreset,
-} from "./inbox-due-date-filter";
-import { InboxActiveFilterChips } from "./inbox-active-filter-chips";
-import { InboxFiltersSheet } from "./inbox-filters-sheet";
-import { InboxHeaderWithSearch } from "./inbox-header-with-search";
+import { PatientProfileDialog } from "@/app/patient-profile/patient-profile-dialog";
+import { listPatientsForPanelInbox } from "@/app/patient-profile/patient-profile-seed";
+import { usePatientProfileUrlState } from "@/app/patient-profile/use-patient-profile-url-state";
+import { AppPageHeaderWithSearch } from "@/components/app-page-header-with-search";
 import { FilteredResultsEmptyState } from "@/components/filtered-results-empty-state";
 import { fullBleedPageRootClass, panelTaskListColumnClass } from "@/lib/layout";
-import { InboxTaskBoard, type InboxTaskRow } from "./inbox-task-board";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { textBody } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
-function taskMatchesDueDatePreset(
-  dueDate: string | undefined,
-  preset: InboxDatePreset,
-  customFrom: string | undefined,
-  customTo: string | undefined,
-  today: Date,
-): boolean {
-  const t0 = startOfDay(today);
-  if (preset === "all") return true;
-  if (!dueDate) return false;
-  const d = startOfDay(parseISO(dueDate));
-  if (preset === "today") return isSameDay(d, t0);
-  if (preset === "next3") {
-    const end = startOfDay(addDays(t0, 2));
-    return d.getTime() >= t0.getTime() && d.getTime() <= end.getTime();
-  }
-  if (preset === "custom") {
-    if (!customFrom?.trim() || !customTo?.trim()) return true;
-    const a = startOfDay(parseISO(customFrom));
-    const b = startOfDay(parseISO(customTo));
-    const lo = a <= b ? a : b;
-    const hi = a <= b ? b : a;
-    return d.getTime() >= lo.getTime() && d.getTime() <= hi.getTime();
-  }
-  return true;
-}
+import { PanelManagementBoard } from "./panel-management-board";
+import { PanelManagementFilterChips } from "./panel-management-filter-chips";
+import { PanelManagementFiltersSheet } from "./panel-management-filters-sheet";
 
-export default function InboxPage() {
+export default function PanelManagementPage() {
   const filterIdPrefix = useId();
-  const { tasksByPatient, updatePatientTasks } = usePanelTasksStore();
   const patientProfile = usePatientProfileUrlState();
-
   const roster = useMemo(() => listPatientsForPanelInbox(), []);
-  const rosterById = useMemo(() => {
-    const m = new Map(roster.map((r) => [r.patientId, r]));
-    return m;
-  }, [roster]);
 
   const pcpOptions = useMemo(
     () =>
@@ -95,16 +46,12 @@ export default function InboxPage() {
   const [patientSearch, setPatientSearch] = useState("");
   const [selectedPcps, setSelectedPcps] = useState<string[]>([]);
   const [selectedNavigators, setSelectedNavigators] = useState<string[]>([]);
-  const [datePreset, setDatePreset] = useState<InboxDatePreset>("all");
-  const [customFrom, setCustomFrom] = useState<string | undefined>(undefined);
-  const [customTo, setCustomTo] = useState<string | undefined>(undefined);
 
-  const [desktopFilterMenu, setDesktopFilterMenu] = useState<string | null>(null);
+  const [desktopFilterMenu, setDesktopFilterMenu] = useState<string | null>(
+    null,
+  );
   const [sheetFilterMenu, setSheetFilterMenu] = useState<string | null>(null);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-
-  const [isAdding, setIsAdding] = useState(false);
-  const [addPatientId, setAddPatientId] = useState<PatientId | "">("");
 
   type ToastAction = { label: string; onClick: () => void };
   type ToastState = { id: number; message: string; action?: ToastAction };
@@ -127,120 +74,38 @@ export default function InboxPage() {
     [],
   );
 
-  const today = useMemo(() => startOfDay(new Date()), []);
-
-  const hasDueDateFilter = datePreset !== "all";
   const hasActiveFilters =
-    selectedPcps.length > 0 ||
-    selectedNavigators.length > 0 ||
-    hasDueDateFilter;
+    selectedPcps.length > 0 || selectedNavigators.length > 0;
 
   const clearAllFilters = useCallback(() => {
     setSelectedPcps([]);
     setSelectedNavigators([]);
-    setDatePreset("all");
-    setCustomFrom(undefined);
-    setCustomTo(undefined);
     setDesktopFilterMenu(null);
     setSheetFilterMenu(null);
   }, []);
 
-  const clearDueDate = useCallback(() => {
-    setDatePreset("all");
-    setCustomFrom(undefined);
-    setCustomTo(undefined);
-  }, []);
-
-  const filteredRows = useMemo(() => {
+  const filteredPatients = useMemo(() => {
     const q = patientSearch.trim().toLowerCase();
-    const rows: InboxTaskRow[] = [];
-    for (const [patientId, taskList] of tasksByPatient) {
-      const meta = rosterById.get(patientId);
-      if (!meta) continue;
-      if (q && !meta.displayName.toLowerCase().includes(q)) continue;
+    return roster.filter((r) => {
+      if (q && !r.displayName.toLowerCase().includes(q)) return false;
       if (
         selectedPcps.length > 0 &&
-        !selectedPcps.includes(meta.pcpDisplayName)
+        !selectedPcps.includes(r.pcpDisplayName)
       ) {
-        continue;
+        return false;
       }
       if (
         selectedNavigators.length > 0 &&
-        !selectedNavigators.includes(meta.navigatorDisplayName)
+        !selectedNavigators.includes(r.navigatorDisplayName)
       ) {
-        continue;
+        return false;
       }
-
-      for (const task of taskList) {
-        if (
-          !taskMatchesDueDatePreset(
-            task.dueDate,
-            datePreset,
-            customFrom,
-            customTo,
-            today,
-          )
-        ) {
-          continue;
-        }
-        rows.push({
-          patientId,
-          displayName: meta.displayName,
-          pcpDisplayName: meta.pcpDisplayName,
-          navigatorDisplayName: meta.navigatorDisplayName,
-          task,
-        });
-      }
-    }
-    return rows;
-  }, [
-    tasksByPatient,
-    rosterById,
-    patientSearch,
-    selectedPcps,
-    selectedNavigators,
-    datePreset,
-    customFrom,
-    customTo,
-    today,
-  ]);
-
-  const handleAddFromInbox = useCallback(
-    (task: LongTermPanelTask) => {
-      if (!addPatientId) return;
-      updatePatientTasks(addPatientId, (prev) => [...prev, task]);
-      setIsAdding(false);
-      setAddPatientId("");
-    },
-    [addPatientId, updatePatientTasks],
-  );
-
-  const patientSelectForAdd = (
-    <div className="min-w-0">
-      <Select
-        value={addPatientId || undefined}
-        onValueChange={(v) => setAddPatientId(v as PatientId)}
-      >
-        <SelectTrigger
-          className="h-9 w-full"
-          aria-label="Patient for new task"
-        >
-          <SelectValue placeholder="Patient" />
-        </SelectTrigger>
-        <SelectContent className="z-1000">
-          {roster.map((r) => (
-            <SelectItem key={r.patientId} value={r.patientId}>
-              {r.displayName} — DOB{" "}
-              {format(parseISO(r.dateOfBirth), "MMM d, yyyy")}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
+      return true;
+    });
+  }, [roster, patientSearch, selectedPcps, selectedNavigators]);
 
   const filterChips = hasActiveFilters ? (
-    <InboxActiveFilterChips
+    <PanelManagementFilterChips
       selectedPcps={selectedPcps}
       onRemovePcp={(pcp) =>
         setSelectedPcps(selectedPcps.filter((x) => x !== pcp))
@@ -249,24 +114,21 @@ export default function InboxPage() {
       onRemoveNavigator={(nav) =>
         setSelectedNavigators(selectedNavigators.filter((x) => x !== nav))
       }
-      datePreset={datePreset}
-      customFrom={customFrom}
-      customTo={customTo}
-      onClearDueDate={clearDueDate}
       onClearAll={clearAllFilters}
-      hasDueDateFilter={hasDueDateFilter}
     />
   ) : null;
 
   return (
     <div className={fullBleedPageRootClass}>
       <div className="sticky top-0 z-30 shrink-0 border-b border-border/50 bg-background max-md:border-border/60">
-        <InboxHeaderWithSearch
+        <AppPageHeaderWithSearch
+          title="Panel Management"
           patientSearch={patientSearch}
           onPatientSearchChange={setPatientSearch}
           filtersActive={hasActiveFilters}
           filterSheetOpen={filterSheetOpen}
           onOpenFilters={() => setFilterSheetOpen(true)}
+          filtersAriaLabel="Open panel filters"
         />
 
         {hasActiveFilters ? (
@@ -306,20 +168,6 @@ export default function InboxPage() {
               fullWidth={false}
               compact={false}
             />
-            <InboxDueDateFilterDropdown
-              idPrefix={filterIdPrefix}
-              preset={datePreset}
-              onPresetChange={setDatePreset}
-              customFrom={customFrom}
-              customTo={customTo}
-              onCustomFromChange={setCustomFrom}
-              onCustomToChange={setCustomTo}
-              openMenu={desktopFilterMenu}
-              setOpenMenu={setDesktopFilterMenu}
-              menuId="due"
-              fullWidth={false}
-              compact={false}
-            />
           </div>
           {filterChips}
         </div>
@@ -332,55 +180,27 @@ export default function InboxPage() {
           "md:mx-auto md:max-w-6xl md:px-8 md:pb-4 md:pt-3",
         )}
       >
-        <div className={panelTaskListColumnClass}>
-          {filteredRows.length === 0 ? (
+        {filteredPatients.length === 0 ? (
+          <div className={panelTaskListColumnClass}>
             <FilteredResultsEmptyState
-              entity="tasks"
+              entity="patients"
               align="center"
               hasSearch={patientSearch.trim().length > 0}
               hasToolbarFilters={hasActiveFilters}
               onClearSearch={() => setPatientSearch("")}
               onClearFilters={clearAllFilters}
             />
-          ) : (
-          <InboxTaskBoard
-            rows={filteredRows}
+          </div>
+        ) : (
+          <PanelManagementBoard
+            patients={filteredPatients}
             showToast={showToast}
-            addButtonSlot={
-              !isAdding ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsAdding(true)}
-                >
-                  <Plus className="size-4" aria-hidden />
-                  Add task
-                </Button>
-              ) : null
-            }
-            addForm={
-              isAdding ? (
-                <TaskAddForm
-                  patientSelector={patientSelectForAdd}
-                  submitDisabled={!addPatientId}
-                  titleAutoFocus={Boolean(addPatientId)}
-                  onAdd={handleAddFromInbox}
-                  onCancel={() => {
-                    setIsAdding(false);
-                    setAddPatientId("");
-                  }}
-                  today={today}
-                />
-              ) : null
-            }
             onOpenPatientProfile={(id) => patientProfile.open(id, "panel")}
           />
-          )}
-        </div>
+        )}
       </div>
 
-      <InboxFiltersSheet
+      <PanelManagementFiltersSheet
         open={filterSheetOpen}
         onOpenChange={setFilterSheetOpen}
         idPrefix={filterIdPrefix}
@@ -392,12 +212,6 @@ export default function InboxPage() {
         navigatorOptions={navigatorOptions}
         selectedNavigators={selectedNavigators}
         onChangeSelectedNavigators={setSelectedNavigators}
-        datePreset={datePreset}
-        onDatePresetChange={setDatePreset}
-        customFrom={customFrom}
-        customTo={customTo}
-        onCustomFromChange={setCustomFrom}
-        onCustomToChange={setCustomTo}
       />
 
       <PatientProfileDialog

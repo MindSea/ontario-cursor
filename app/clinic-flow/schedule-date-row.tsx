@@ -53,6 +53,9 @@ export function ScheduleDateRow({
   className,
   filteredMatchDayOptions,
   onSelectFilteredCalendarDay,
+  centerLabel,
+  prevPeriodAriaLabel = "Previous day",
+  nextPeriodAriaLabel = "Next day",
 }: {
   selectedDate: Date;
   onShiftDay: (deltaDays: number) => void;
@@ -62,6 +65,10 @@ export function ScheduleDateRow({
   /** Sorted days that have ≥1 appointment matching toolbar filters, with counts. */
   filteredMatchDayOptions?: readonly FilteredMatchDayOption[];
   onSelectFilteredCalendarDay?: (dateKey: string) => void;
+  /** When set, replaces the default single-day title (Booking week/month/year). */
+  centerLabel?: string;
+  prevPeriodAriaLabel?: string;
+  nextPeriodAriaLabel?: string;
 }) {
   const selectedKey = format(selectedDate, "yyyy-MM-dd");
   const options = filteredMatchDayOptions ?? [];
@@ -217,7 +224,7 @@ export function ScheduleDateRow({
             variant="ghost"
             size="icon"
             className={cn("shrink-0", fullBleed ? "h-8 w-8" : "h-9 w-9")}
-            aria-label="Previous day"
+            aria-label={prevPeriodAriaLabel}
             onClick={() => onShiftDay(-1)}
           >
             <ChevronLeft className={fullBleed ? "size-3.5" : "size-4"} aria-hidden />
@@ -231,7 +238,7 @@ export function ScheduleDateRow({
               textBody,
             )}
           >
-            {formatTimelineDayLabel(selectedDate)}
+            {centerLabel ?? formatTimelineDayLabel(selectedDate)}
           </span>
           {showMatchDaysControl ? (
             fullBleed ? (
@@ -312,7 +319,7 @@ export function ScheduleDateRow({
             variant="ghost"
             size="icon"
             className={cn("shrink-0", fullBleed ? "h-8 w-8" : "h-9 w-9")}
-            aria-label="Next day"
+            aria-label={nextPeriodAriaLabel}
             onClick={() => onShiftDay(1)}
           >
             <ChevronRight className={fullBleed ? "size-3.5" : "size-4"} aria-hidden />

@@ -8,6 +8,9 @@ export const SLOT_MINUTES = 15;
 export const SLOT_COUNT =
   (DAY_GRID_END_MIN - DAY_GRID_START_MIN) / SLOT_MINUTES;
 
+/** Side-by-side columns before "+N more" overflow (narrow schedule column). */
+export const SCHEDULE_MAX_VISIBLE_LANES = 2;
+
 function parseAppointmentMinutes(clock: string): number {
   const t = clock.trim().toUpperCase().replace(/\s+/g, " ");
   const match = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
@@ -38,10 +41,12 @@ function slotIndexForAppointment(a: Appointment): number | null {
   return Math.floor((mins - DAY_GRID_START_MIN) / SLOT_MINUTES);
 }
 
-/** Default visit block height in 15-minute slots (60 minutes). */
-const DEFAULT_DURATION_SLOTS = 4;
+function durationSlotsForAppointment(a: Appointment): number {
+  const mins = a.estimatedDurationMins ?? 60;
+  return Math.max(1, Math.ceil(mins / SLOT_MINUTES));
+}
 
-type AppointmentBlock = {
+export type AppointmentBlock = {
   appointment: Appointment;
   startSlot: number;
   durationSlots: number;
@@ -57,13 +62,16 @@ export function buildAppointmentBlocks(
     out.push({
       appointment: a,
       startSlot,
-      durationSlots: DEFAULT_DURATION_SLOTS,
+      durationSlots: durationSlotsForAppointment(a),
     });
   }
   return out;
 }
 
-function blocksOverlap(a: AppointmentBlock, b: AppointmentBlock): boolean {
+export function blocksOverlap(
+  a: AppointmentBlock,
+  b: AppointmentBlock,
+): boolean {
   const aEnd = a.startSlot + a.durationSlots;
   const bEnd = b.startSlot + b.durationSlots;
   return a.startSlot < bEnd && b.startSlot < aEnd;
@@ -78,29 +86,52 @@ function blocksActiveAtSlot(
   );
 }
 
-/** Max simultaneous visits overlapping this block's time span (only slots inside the visit). */
-function maxConcurrentDuringBlock(
+function peakConcurrencyInCluster(
   blocks: readonly AppointmentBlock[],
-  b: AppointmentBlock,
 ): number {
-  const end = b.startSlot + b.durationSlots;
-  let max = 0;
-  for (let t = b.startSlot; t < end; t++) {
-    max = Math.max(max, blocksActiveAtSlot(blocks, t).length);
+  if (blocks.length === 0) return 0;
+  let minStart = Number.POSITIVE_INFINITY;
+  let maxEnd = 0;
+  for (const b of blocks) {
+    minStart = Math.min(minStart, b.startSlot);
+    maxEnd = Math.max(maxEnd, b.startSlot + b.durationSlots);
   }
-  return max;
+  let peak = 0;
+  for (let t = minStart; t < maxEnd; t++) {
+    peak = Math.max(peak, blocksActiveAtSlot(blocks, t).length);
+  }
+  return peak;
 }
 
-type AppointmentBlockLayout = {
-  block: AppointmentBlock;
-  laneIndex: number;
-  totalLanes: number;
-};
+function buildOverlapClusters(
+  blocks: readonly AppointmentBlock[],
+): AppointmentBlock[][] {
+  const visited = new Set<number>();
+  const clusters: AppointmentBlock[][] = [];
 
-/**
- * Greedy lanes: sort by startSlot; each visit takes the lowest lane index with no time conflict
- * in that lane. Width uses only max concurrency during that visit's span (1 → full width).
- */
+  for (let i = 0; i < blocks.length; i++) {
+    if (visited.has(i)) continue;
+    const cluster: AppointmentBlock[] = [];
+    const stack = [i];
+    visited.add(i);
+
+    while (stack.length > 0) {
+      const idx = stack.pop()!;
+      cluster.push(blocks[idx]!);
+      for (let j = 0; j < blocks.length; j++) {
+        if (visited.has(j)) continue;
+        if (blocksOverlap(blocks[idx]!, blocks[j]!)) {
+          visited.add(j);
+          stack.push(j);
+        }
+      }
+    }
+    clusters.push(cluster);
+  }
+
+  return clusters;
+}
+
 function assignGreedyLanes(
   blocks: readonly AppointmentBlock[],
 ): Map<string, number> {
@@ -113,33 +144,120 @@ function assignGreedyLanes(
   const laneById = new Map<string, number>();
 
   for (const b of sorted) {
-    let L = 0;
+    let lane = 0;
     for (;;) {
-      const inLane = laneBlocks[L] ?? [];
-      laneBlocks[L] = inLane;
+      const inLane = laneBlocks[lane] ?? [];
+      laneBlocks[lane] = inLane;
       const conflict = inLane.some((x) => blocksOverlap(x, b));
       if (!conflict) {
         inLane.push(b);
-        laneById.set(b.appointment.id, L);
+        laneById.set(b.appointment.id, lane);
         break;
       }
-      L++;
+      lane++;
     }
   }
   return laneById;
 }
 
+export type ScheduleBlockPlacement = {
+  block: AppointmentBlock;
+  laneIndex: number;
+  /** Column count used for `left` / `width` (1 or 2). */
+  displayColumnCount: number;
+  clusterPeak: number;
+};
+
+export type ScheduleOverflowGroup = {
+  id: string;
+  hiddenBlocks: readonly AppointmentBlock[];
+  anchorStartSlot: number;
+  spanSlots: number;
+  displayColumnCount: number;
+};
+
+export type ScheduleGridLayout = {
+  placements: ScheduleBlockPlacement[];
+  overflowGroups: ScheduleOverflowGroup[];
+};
+
+export type LayoutScheduleBlocksOptions = {
+  /** Default 2 (day). Week view uses 1 column + overflow. */
+  maxVisibleLanes?: number;
+};
+
+/**
+ * Lays out visits for the day grid: up to two side-by-side columns per overlap
+ * cluster; additional concurrent visits are listed via overflow affordances.
+ */
+export function layoutScheduleBlocks(
+  blocks: readonly AppointmentBlock[],
+  options?: LayoutScheduleBlocksOptions,
+): ScheduleGridLayout {
+  const maxVisibleLanes = options?.maxVisibleLanes ?? SCHEDULE_MAX_VISIBLE_LANES;
+  const placements: ScheduleBlockPlacement[] = [];
+  const overflowGroups: ScheduleOverflowGroup[] = [];
+
+  const clusters = buildOverlapClusters(blocks);
+  let clusterSeq = 0;
+
+  for (const cluster of clusters) {
+    const clusterPeak = peakConcurrencyInCluster(cluster);
+    const displayColumnCount =
+      clusterPeak <= 1 ? 1 : maxVisibleLanes;
+    const laneById = assignGreedyLanes(cluster);
+
+    const hidden: AppointmentBlock[] = [];
+    for (const block of cluster) {
+      const laneIndex = laneById.get(block.appointment.id) ?? 0;
+      if (laneIndex < maxVisibleLanes) {
+        placements.push({
+          block,
+          laneIndex,
+          displayColumnCount,
+          clusterPeak,
+        });
+      } else {
+        hidden.push(block);
+      }
+    }
+
+    if (hidden.length > 0) {
+      const anchorStartSlot = Math.min(...hidden.map((b) => b.startSlot));
+      const anchorEndSlot = Math.max(
+        ...hidden.map((b) => b.startSlot + b.durationSlots),
+      );
+      overflowGroups.push({
+        id: `overflow-${clusterSeq}`,
+        hiddenBlocks: hidden,
+        anchorStartSlot,
+        spanSlots: Math.max(1, anchorEndSlot - anchorStartSlot),
+        displayColumnCount,
+      });
+    }
+    clusterSeq++;
+  }
+
+  return { placements, overflowGroups };
+}
+
+/** @deprecated Prefer {@link layoutScheduleBlocks}. */
+export type AppointmentBlockLayout = {
+  block: AppointmentBlock;
+  laneIndex: number;
+  totalLanes: number;
+};
+
+/** @deprecated Prefer {@link layoutScheduleBlocks}. */
 export function layoutGreedyLanes(
   blocks: readonly AppointmentBlock[],
 ): AppointmentBlockLayout[] {
-  if (blocks.length === 0) return [];
-  const laneById = assignGreedyLanes(blocks);
-  return blocks.map((block) => {
-    const laneIndex = laneById.get(block.appointment.id) ?? 0;
-    const peak = maxConcurrentDuringBlock(blocks, block);
-    const totalLanes = Math.max(1, peak);
-    return { block, laneIndex, totalLanes };
-  });
+  const { placements } = layoutScheduleBlocks(blocks);
+  return placements.map((p) => ({
+    block: p.block,
+    laneIndex: p.laneIndex,
+    totalLanes: p.displayColumnCount,
+  }));
 }
 
 /** Strong line on hour rows (:00); faint on quarter rows. */

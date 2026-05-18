@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { panelTaskListMaxWidthClass } from "@/lib/layout";
 import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -348,14 +349,16 @@ export function PatientProfileView({
          * in-flight contact-form / task edits stay alive across switches.
          *
          * Contact / admin uses a wider cap (`max-w-5xl`) than Panel
-         * management (`max-w-3xl`): the 2-column card layout has real
-         * horizontal demand (3-line address blocks were wrapping at
-         * 3xl), whereas Panel management is a vertical task list that
-         * reads better at a narrower line length. */}
+         * management (`panelTaskListMaxWidthClass`): the 2-column card
+         * layout has real horizontal demand (3-line address blocks were
+         * wrapping at 3xl), whereas Panel management is a vertical task
+         * list that reads better at a narrower line length. */}
         <div
           className={cn(
             "mx-auto w-full flex-1 px-4 py-5 md:px-6 md:py-6",
-            activeSection === "contact" ? "max-w-5xl" : "max-w-3xl",
+            activeSection === "contact"
+              ? "max-w-5xl"
+              : panelTaskListMaxWidthClass,
             (activeSection === "conversations" ||
               activeSection === "appointments") &&
               "hidden",

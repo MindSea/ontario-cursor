@@ -16,7 +16,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const clinicFlowRoute = pathname?.startsWith("/clinic-flow") ?? false
   const messagingRoute = pathname?.startsWith("/messaging") ?? false
   const inboxRoute = pathname?.startsWith("/inbox") ?? false
-  const fullBleedAppRoute = clinicFlowRoute || messagingRoute || inboxRoute
+  const panelManagementRoute =
+    pathname?.startsWith("/panel-management") ?? false
+  const bookingRoute = pathname?.startsWith("/booking") ?? false
+  const fullBleedAppRoute =
+    clinicFlowRoute ||
+    messagingRoute ||
+    inboxRoute ||
+    panelManagementRoute ||
+    bookingRoute
 
   return (
     <SidebarProvider>

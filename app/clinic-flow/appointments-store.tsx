@@ -46,6 +46,8 @@ export type AppointmentsStoreValue = {
    * and leaves everything else intact. No-op when `id` doesn't match.
    */
   updateAppointment: (id: string, patch: Partial<Appointment>) => void;
+  addAppointment: (appointment: Appointment) => void;
+  deleteAppointment: (id: string) => void;
 };
 
 const AppointmentsStoreContext = createContext<AppointmentsStoreValue | null>(
@@ -75,13 +77,29 @@ export function AppointmentsStoreProvider({
     [],
   );
 
+  const addAppointment = useCallback((appointment: Appointment) => {
+    setAppointments((prev) => [...prev, appointment]);
+  }, []);
+
+  const deleteAppointment = useCallback((id: string) => {
+    setAppointments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
   const value = useMemo<AppointmentsStoreValue>(
     () => ({
       appointments,
       initialSelectedId: initial.selectedId,
       updateAppointment,
+      addAppointment,
+      deleteAppointment,
     }),
-    [appointments, initial.selectedId, updateAppointment],
+    [
+      appointments,
+      initial.selectedId,
+      updateAppointment,
+      addAppointment,
+      deleteAppointment,
+    ],
   );
 
   return (
