@@ -29,10 +29,11 @@ import type { BuildingPresenceBucket } from "./schedule-building-filter";
 import {
   BUILDING_PRESENCE_BUCKET_LABEL,
   BUILDING_PRESENCE_BUCKET_ORDER,
-  buildingPresenceBucketsShowAll,
   buildingPresenceFilterNarrows,
+  buildingPresenceFilterTriggerSummary,
 } from "./schedule-building-filter";
 import { ScheduleFilterMultiSelectDropdown } from "./schedule-filter-multiselect-dropdown";
+import { ScheduleFilterRadioSelectDropdown } from "./schedule-filter-radio-select-dropdown";
 import { SchedulePatientSearch } from "./schedule-patient-search";
 import {
   SCHEDULE_BOTTOM_SHEET_BODY_OUTER_CLASS,
@@ -181,7 +182,7 @@ export function ScheduleToolbar({
     const { fullWidth, compact = false } = opts;
     return (
       <>
-        <ScheduleFilterMultiSelectDropdown
+        <ScheduleFilterRadioSelectDropdown
           idPrefix={idPrefix}
           menuId="status"
           openMenu={openFilterMenu}
@@ -196,9 +197,7 @@ export function ScheduleToolbar({
             BUILDING_PRESENCE_BUCKET_LABEL[opt as BuildingPresenceBucket]
           }
           formatSummary={(sel) =>
-            buildingPresenceBucketsShowAll(sel as BuildingPresenceBucket[])
-              ? "All"
-              : `${sel.length}`
+            buildingPresenceFilterTriggerSummary(sel as BuildingPresenceBucket[])
           }
           fullWidth={fullWidth}
           compact={compact}

@@ -12,6 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { formatScheduleDayLabel } from "@/lib/calendar-format";
 import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -29,14 +30,6 @@ export type FilteredMatchDayOption = {
   dateKey: string;
   count: number;
 };
-
-function formatTimelineDayLabel(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 function formatMatchDayLabel(dateKey: string): string {
   const d = parse(dateKey, "yyyy-MM-dd", new Date());
@@ -238,7 +231,7 @@ export function ScheduleDateRow({
               textBody,
             )}
           >
-            {centerLabel ?? formatTimelineDayLabel(selectedDate)}
+            {centerLabel ?? formatScheduleDayLabel(selectedDate)}
           </span>
           {showMatchDaysControl ? (
             fullBleed ? (

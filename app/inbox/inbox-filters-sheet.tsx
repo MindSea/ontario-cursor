@@ -52,8 +52,8 @@ export function InboxFiltersSheet({
   navigatorOptions: readonly string[];
   selectedNavigators: readonly string[];
   onChangeSelectedNavigators: (next: string[]) => void;
-  datePreset: InboxDatePreset;
-  onDatePresetChange: (p: InboxDatePreset) => void;
+  datePreset: InboxDatePreset | null;
+  onDatePresetChange: (p: InboxDatePreset | null) => void;
   customFrom: string | undefined;
   customTo: string | undefined;
   onCustomFromChange: (v: string | undefined) => void;

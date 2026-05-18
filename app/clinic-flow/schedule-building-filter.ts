@@ -33,6 +33,14 @@ export function buildingPresenceBucketsShowAll(
   return BUILDING_PRESENCE_BUCKET_ORDER.every((b) => set.has(b));
 }
 
+/** Compact trigger summary (matches PCP / navigator: All or a count). */
+export function buildingPresenceFilterTriggerSummary(
+  selectedBuckets: readonly BuildingPresenceBucket[],
+): string {
+  if (buildingPresenceBucketsShowAll(selectedBuckets)) return "All";
+  return `${selectedBuckets.length}`;
+}
+
 /** True when the status filter actually narrows the schedule (not “all” / both). */
 export function buildingPresenceFilterNarrows(
   selectedBuckets: readonly BuildingPresenceBucket[],

@@ -6,10 +6,15 @@ import { Trash2 } from "lucide-react";
 
 import {
   BOOKING_APPOINTMENT_TYPES,
+  BOOKING_DURATION_OPTIONS,
   BOOKING_SLOT_TIMES,
   createAppointmentFromBookingInput,
   formatBookingDateInput,
 } from "@/app/clinic-flow/create-appointment";
+import {
+  snapClockToQuarterHour,
+  snapDurationToQuarterHourMinutes,
+} from "@/app/clinic-flow/schedule-clock";
 import {
   CLINIC_FLOW_SEED_NAVIGATORS,
   CLINIC_FLOW_SEED_PCPS,
@@ -82,10 +87,16 @@ export function BookingAppointmentDialog({
       if (mode === "edit" && appointment) {
         setPatientId(appointment.patientId);
         setDate(appointment.date);
-        setTime(appointment.time);
+        setTime(snapClockToQuarterHour(appointment.time));
         setReason(appointment.reason);
         setAppointmentType(appointment.appointmentType);
-        setDurationMins(String(appointment.estimatedDurationMins));
+        setDurationMins(
+          String(
+            snapDurationToQuarterHourMinutes(
+              appointment.estimatedDurationMins,
+            ),
+          ),
+        );
         setPcp(appointment.pcp);
         setNavigator(appointment.navigator);
         return;
@@ -111,19 +122,27 @@ export function BookingAppointmentDialog({
   };
 
   const handleSubmit = () => {
-    const mins = Number.parseInt(durationMins, 10);
-    if (!patientId || !date || !time || !Number.isFinite(mins) || mins < 1) {
+    const rawMins = Number.parseInt(durationMins, 10);
+    if (
+      !patientId ||
+      !date ||
+      !time ||
+      !Number.isFinite(rawMins) ||
+      rawMins < 1
+    ) {
       return;
     }
+    const snappedTime = snapClockToQuarterHour(time);
+    const snappedMins = snapDurationToQuarterHourMinutes(rawMins);
     if (mode === "create") {
       onSaveCreate(
         createAppointmentFromBookingInput({
           patientId,
           date,
-          time,
+          time: snappedTime,
           reason,
           appointmentType,
-          estimatedDurationMins: mins,
+          estimatedDurationMins: snappedMins,
           pcp: pcp || roster.find((r) => r.patientId === patientId)!.pcpDisplayName,
           navigator:
             navigator ||
@@ -135,10 +154,10 @@ export function BookingAppointmentDialog({
       onSaveEdit(appointment.id, {
         patientId,
         date,
-        time,
+        time: snappedTime,
         reason: reason.trim() || appointment.reason,
         appointmentType,
-        estimatedDurationMins: mins,
+        estimatedDurationMins: snappedMins,
         pcp,
         navigator,
         patientName: row?.displayName ?? appointment.patientName,
@@ -252,16 +271,20 @@ export function BookingAppointmentDialog({
             </div>
             <div className="grid gap-1.5">
               <label className="text-sm font-medium" htmlFor="booking-duration">
-                Duration (min)
+                Duration
               </label>
-              <Input
-                id="booking-duration"
-                type="number"
-                min={15}
-                step={15}
-                value={durationMins}
-                onChange={(e) => setDurationMins(e.target.value)}
-              />
+              <Select value={durationMins} onValueChange={setDurationMins}>
+                <SelectTrigger id="booking-duration" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-1000">
+                  {BOOKING_DURATION_OPTIONS.map((mins) => (
+                    <SelectItem key={mins} value={String(mins)}>
+                      {mins} min
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

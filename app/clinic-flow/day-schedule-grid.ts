@@ -187,8 +187,8 @@ export type LayoutScheduleBlocksOptions = {
 };
 
 /**
- * Lays out visits for the day grid: up to two side-by-side columns per overlap
- * cluster; additional concurrent visits are listed via overflow affordances.
+ * @deprecated Prefer {@link layoutScheduleLaneCascade} from `./schedule-bundle-layout`.
+ * Legacy adapter for placements + separate overflow groups.
  */
 export function layoutScheduleBlocks(
   blocks: readonly AppointmentBlock[],

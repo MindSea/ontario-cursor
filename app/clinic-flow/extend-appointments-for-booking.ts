@@ -15,10 +15,11 @@ import {
 
 import { listPatientsForPanelInbox } from "@/app/patient-profile/patient-profile-seed";
 
+import { createSeedCalendarAppointment } from "./create-appointment";
 import {
-  createSeedCalendarAppointment,
+  capAppointmentDurationMins,
   minutesToBookingClock,
-} from "./create-appointment";
+} from "./schedule-clock";
 import type { Appointment } from "./types";
 
 const MONTHS_BACK = 6;
@@ -176,7 +177,9 @@ function pickVisitKind(
     return {
       appointmentType: "Follow-up Visit",
       reason: FOLLOW_UP_REASONS[seededInt(seed + 1, 0, FOLLOW_UP_REASONS.length - 1)]!,
-      durationMins: seededInt(seed + 2, 2, 4) * 15,
+      durationMins: capAppointmentDurationMins(
+        seededInt(seed + 2, 2, 4) * 15,
+      ),
     };
   }
   if (roll <= 7) {
@@ -218,8 +221,10 @@ export function extendAppointmentsForBookingCalendar(
   const { start: rangeStart, end: rangeEnd } = bookingDateRange(today);
 
   const usedSlotByDate = new Set<string>();
+  const usedPatientByDate = new Set<string>();
   for (const a of appointments) {
     usedSlotByDate.add(`${a.date}:${a.time}`);
+    usedPatientByDate.add(`${a.date}:${a.patientId}`);
   }
 
   const monthCounts = countByMonth(appointments);
@@ -263,10 +268,6 @@ export function extendAppointmentsForBookingCalendar(
       const slotKey = `${dateKey}:${time}`;
       if (usedSlotByDate.has(slotKey)) continue;
 
-      const visitDate = startOfDay(parseISO(dateKey));
-      const daysFromToday = differenceInCalendarDays(visitDate, today);
-      const isPast = dateKey < todayKey;
-
       const patient =
         roster[
           seededInt(
@@ -275,6 +276,13 @@ export function extendAppointmentsForBookingCalendar(
             roster.length - 1,
           )
         ]!;
+
+      const patientDayKey = `${dateKey}:${patient.patientId}`;
+      if (usedPatientByDate.has(patientDayKey)) continue;
+
+      const visitDate = startOfDay(parseISO(dateKey));
+      const daysFromToday = differenceInCalendarDays(visitDate, today);
+      const isPast = dateKey < todayKey;
 
       const patientMonthKey = `${mk}:${patient.patientId}`;
       const visitsThisMonth = patientMonthVisits.get(patientMonthKey) ?? 0;
@@ -292,7 +300,7 @@ export function extendAppointmentsForBookingCalendar(
         time,
         reason: kind.reason,
         appointmentType: kind.appointmentType,
-        estimatedDurationMins: kind.durationMins,
+        estimatedDurationMins: capAppointmentDurationMins(kind.durationMins),
         pcp: patient.pcpDisplayName,
         navigator: patient.navigatorDisplayName,
         stage: isPast ? "COMPLETED" : "PREVISIT",
@@ -300,6 +308,7 @@ export function extendAppointmentsForBookingCalendar(
 
       extra.push(apt);
       usedSlotByDate.add(slotKey);
+      usedPatientByDate.add(patientDayKey);
       patientMonthVisits.set(patientMonthKey, visitsThisMonth + 1);
       monthCounts.set(mk, (monthCounts.get(mk) ?? 0) + 1);
       toAdd--;

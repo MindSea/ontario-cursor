@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useState,
 } from "react";
@@ -21,9 +22,11 @@ import {
   BUILDING_PRESENCE_BUCKET_LABEL,
   BUILDING_PRESENCE_BUCKET_ORDER,
   buildingPresenceFilterNarrows,
+  buildingPresenceFilterTriggerSummary,
   type BuildingPresenceBucket,
 } from "@/app/clinic-flow/schedule-building-filter";
 import { ScheduleFilterMultiSelectDropdown } from "@/app/clinic-flow/schedule-filter-multiselect-dropdown";
+import { ScheduleFilterRadioSelectDropdown } from "@/app/clinic-flow/schedule-filter-radio-select-dropdown";
 import { ScheduleDateRow } from "@/app/clinic-flow/schedule-date-row";
 import type { FilteredMatchDayOption } from "@/app/clinic-flow/schedule-date-row";
 import type { Appointment } from "@/app/clinic-flow/types";
@@ -80,18 +83,18 @@ export default function BookingPage() {
   const patientProfile = usePatientProfileUrlState();
 
   const [anchor, setAnchor] = useState(() => new Date());
-  const [view, setView] = useState<BookingCalendarView>(() => {
-    if (typeof window === "undefined") return "week";
+  const [view, setView] = useState<BookingCalendarView>("week");
+
+  useLayoutEffect(() => {
     try {
       const raw = sessionStorage.getItem(BOOKING_VIEW_STORAGE_KEY);
       if (raw === "day" || raw === "week" || raw === "month" || raw === "year") {
-        return raw;
+        setView(raw);
       }
     } catch {
       /* ignore */
     }
-    return "week";
-  });
+  }, []);
   const [patientSearch, setPatientSearch] = useState("");
   const [selectedPcps, setSelectedPcps] = useState<string[]>([]);
   const [selectedNavigators, setSelectedNavigators] = useState<string[]>([]);
@@ -269,7 +272,7 @@ export default function BookingPage() {
               selected={selectedNavigators}
               onChangeSelected={setSelectedNavigators}
             />
-            <ScheduleFilterMultiSelectDropdown
+            <ScheduleFilterRadioSelectDropdown
               idPrefix={filterIdPrefix}
               menuId="status"
               openMenu={desktopFilterMenu}
@@ -282,6 +285,11 @@ export default function BookingPage() {
               }
               formatOptionLabel={(opt) =>
                 BUILDING_PRESENCE_BUCKET_LABEL[opt as BuildingPresenceBucket]
+              }
+              formatSummary={(sel) =>
+                buildingPresenceFilterTriggerSummary(
+                  sel as BuildingPresenceBucket[],
+                )
               }
             />
           </div>

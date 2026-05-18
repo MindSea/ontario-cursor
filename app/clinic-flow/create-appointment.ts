@@ -5,24 +5,24 @@ import type { PatientId } from "@/app/patient-profile/types";
 
 import { intakeBundleProgressFromMissing } from "./intake-form-catalog";
 import { deriveSeedCheckedInAt } from "./schedule-agenda-seed";
+import {
+  BOOKING_DURATION_OPTIONS,
+  BOOKING_SLOT_TIMES,
+  minutesToBookingClock,
+  snapClockToQuarterHour,
+  snapDurationToQuarterHourMinutes,
+} from "./schedule-clock";
 import type { Appointment, AppointmentStage } from "./types";
+
+export {
+  BOOKING_DURATION_OPTIONS,
+  BOOKING_SLOT_TIMES,
+  minutesToBookingClock,
+} from "./schedule-clock";
 
 const DEFAULT_MISSING = [
   "Communication form",
   "Authorization and Consent for treatment",
-] as const;
-
-export const BOOKING_SLOT_TIMES = [
-  "08:00 AM",
-  "08:40 AM",
-  "09:20 AM",
-  "10:00 AM",
-  "10:40 AM",
-  "11:20 AM",
-  "12:10 PM",
-  "01:10 PM",
-  "02:20 PM",
-  "03:30 PM",
 ] as const;
 
 export const BOOKING_APPOINTMENT_TYPES = [
@@ -67,6 +67,15 @@ export type CreateAppointmentInput = {
   navigator: string;
 };
 
+function normalizeBookingTiming(time: string, estimatedDurationMins: number) {
+  return {
+    time: snapClockToQuarterHour(time),
+    estimatedDurationMins: snapDurationToQuarterHourMinutes(
+      estimatedDurationMins,
+    ),
+  };
+}
+
 /** Builds a full {@link Appointment} with workspace-safe defaults for Booking create. */
 export function createAppointmentFromBookingInput(
   input: CreateAppointmentInput,
@@ -76,19 +85,24 @@ export function createAppointmentFromBookingInput(
     throw new Error(`Unknown patient ${input.patientId}`);
   }
 
+  const timing = normalizeBookingTiming(
+    input.time,
+    input.estimatedDurationMins,
+  );
+
   const missing = [...DEFAULT_MISSING];
   const seed: Appointment = {
     id: makeAppointmentId(),
     patientId: input.patientId,
     date: input.date,
-    time: input.time,
+    time: timing.time,
     patientName: profile.summary.displayName,
     dateOfBirth: profile.demographics.dateOfBirth,
     room: "WAIT",
     stage: "PREVISIT",
     reason: input.reason.trim() || "Follow-up",
     appointmentType: input.appointmentType,
-    estimatedDurationMins: input.estimatedDurationMins,
+    estimatedDurationMins: timing.estimatedDurationMins,
     pcp: input.pcp,
     navigator: input.navigator,
     checkedInAt: null,
@@ -142,14 +156,4 @@ export function createSeedCalendarAppointment(
     stage: "PREVISIT",
     checkedInAt: null,
   };
-}
-
-/** 15-minute grid between 8:00 AM and 4:45 PM for booking seed times. */
-export function minutesToBookingClock(totalMinutes: number): string {
-  const h24 = Math.floor(totalMinutes / 60);
-  const minute = totalMinutes % 60;
-  const ap = h24 >= 12 ? "PM" : "AM";
-  let hour12 = h24 % 12;
-  if (hour12 === 0) hour12 = 12;
-  return `${hour12}:${minute.toString().padStart(2, "0")} ${ap}`;
 }

@@ -1,27 +1,30 @@
 "use client";
 
-import { useMemo } from "react";
-
 import {
-  buildAppointmentBlocks,
   DAY_GRID_START_MIN,
   formatAxisSlotTime,
-  layoutScheduleBlocks,
   SLOT_COUNT,
   SLOT_MINUTES,
   slotRowBorderClass,
 } from "@/app/clinic-flow/day-schedule-grid";
-import { ScheduleOverflowPopover } from "@/app/clinic-flow/schedule-overflow-popover";
-import { ScheduleVisitGridTile } from "@/app/clinic-flow/schedule-visit-grid-tile";
+import { ScheduleBundleGrid } from "@/app/clinic-flow/schedule-bundle-grid";
+import type { ScheduleCalendarLayoutMode } from "@/app/clinic-flow/schedule-bundle-layout";
 import type { Appointment } from "@/app/clinic-flow/types";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-
-import { BookingWeekVisitTile } from "./booking-week-visit-tile";
 
 export const BOOKING_SLOT_HEIGHT_VAR = "--bk-slot";
 export const BOOKING_SLOT_HEIGHT = "3.5rem";
 
 export type BookingScheduleViewMode = "day" | "week";
+
+function layoutModeForBookingView(
+  viewMode: BookingScheduleViewMode,
+  isMobile: boolean,
+): ScheduleCalendarLayoutMode {
+  if (viewMode === "week") return "week";
+  return isMobile ? "day-compact" : "day-wide";
+}
 
 export function BookingScheduleTimeAxis({ className }: { className?: string }) {
   return (
@@ -73,14 +76,8 @@ export function BookingScheduleDayColumn({
   viewMode?: BookingScheduleViewMode;
   className?: string;
 }) {
-  const isWeek = viewMode === "week";
-
-  const { placements, overflowGroups } = useMemo(() => {
-    const blocks = buildAppointmentBlocks(appointments);
-    return layoutScheduleBlocks(blocks, {
-      maxVisibleLanes: isWeek ? 1 : undefined,
-    });
-  }, [appointments, isWeek]);
+  const isMobile = useIsMobile();
+  const layoutMode = layoutModeForBookingView(viewMode, isMobile);
 
   return (
     <div
@@ -106,62 +103,17 @@ export function BookingScheduleDayColumn({
         })}
       </div>
 
-      <div className="absolute inset-y-0 left-0.5 right-0.5">
-        {placements.map(({ block, laneIndex, displayColumnCount }) => {
-          const endSlot = Math.min(
-            block.startSlot + block.durationSlots,
-            SLOT_COUNT,
-          );
-          const spanSlots = Math.max(1, endSlot - block.startSlot);
-          const multi = displayColumnCount > 1;
-          const positionStyle = {
-            top: `calc(${block.startSlot} * var(${BOOKING_SLOT_HEIGHT_VAR}) + 2px)`,
-            height: `calc(${spanSlots} * var(${BOOKING_SLOT_HEIGHT_VAR}) - 4px)`,
-            left: multi
-              ? `calc(${laneIndex} * (100% / ${displayColumnCount}))`
-              : "0",
-            width: multi ? `calc(100% / ${displayColumnCount})` : "100%",
-          };
-
-          if (isWeek) {
-            return (
-              <BookingWeekVisitTile
-                key={block.appointment.id}
-                appointment={block.appointment}
-                isSelected={block.appointment.id === selectedId}
-                onSelect={() => onSelectAppointment(block.appointment)}
-                style={positionStyle}
-              />
-            );
-          }
-
-          return (
-            <ScheduleVisitGridTile
-              key={block.appointment.id}
-              appointment={block.appointment}
-              isSelected={block.appointment.id === selectedId}
-              spanSlots={spanSlots}
-              onSelect={() => onSelectAppointment(block.appointment)}
-              style={positionStyle}
-            />
-          );
-        })}
-
-        {overflowGroups.map((group) => (
-          <ScheduleOverflowPopover
-            key={group.id}
-            hiddenBlocks={group.hiddenBlocks}
-            selectedId={selectedId}
-            onSelectAppointment={(id) => {
-              const apt = appointments.find((a) => a.id === id);
-              if (apt) onSelectAppointment(apt);
-            }}
-            anchorStartSlot={group.anchorStartSlot}
-            spanSlots={group.spanSlots}
-            displayColumnCount={group.displayColumnCount}
-            slotCssVar={BOOKING_SLOT_HEIGHT_VAR}
-          />
-        ))}
+      <div className="absolute inset-y-0 left-0.5 right-0.5 overflow-hidden">
+        <ScheduleBundleGrid
+          appointments={appointments}
+          layoutMode={layoutMode}
+          selectedId={selectedId}
+          onSelectAppointment={(id) => {
+            const apt = appointments.find((a) => a.id === id);
+            if (apt) onSelectAppointment(apt);
+          }}
+          slotCssVar={BOOKING_SLOT_HEIGHT_VAR}
+        />
       </div>
     </div>
   );

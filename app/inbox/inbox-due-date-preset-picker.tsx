@@ -3,15 +3,16 @@
 import { Calendar as CalendarIcon } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
+import { ToggleRadioFilterRow } from "@/components/toggle-radio-filter-row";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup } from "@/components/ui/radio-group";
+import { toggleRadioFilterValue } from "@/lib/toggle-radio-filter";
 import { cn } from "@/lib/utils";
 
 import type { InboxDatePreset } from "./inbox-due-date-filter";
 
 const PRESETS: { key: InboxDatePreset; label: string }[] = [
-  { key: "all", label: "All" },
   { key: "today", label: "Today" },
   { key: "next3", label: "Next 3 days" },
   { key: "custom", label: "Custom range" },
@@ -33,8 +34,8 @@ export function InboxDueDatePresetPicker({
   showClearRow = true,
   className,
 }: {
-  preset: InboxDatePreset;
-  onPresetChange: (p: InboxDatePreset) => void;
+  preset: InboxDatePreset | null;
+  onPresetChange: (p: InboxDatePreset | null) => void;
   customFrom: string | undefined;
   customTo: string | undefined;
   onCustomFromChange: (v: string | undefined) => void;
@@ -44,12 +45,13 @@ export function InboxDueDatePresetPicker({
   showClearRow?: boolean;
   className?: string;
 }) {
-  const handleValueChange = (value: string) => {
-    const key = value as InboxDatePreset;
-    onPresetChange(key);
-    if (key !== "custom") {
+  const applyPreset = (next: InboxDatePreset | null) => {
+    onPresetChange(next);
+    if (next === null || next !== "custom") {
       onCustomFromChange(undefined);
       onCustomToChange(undefined);
+    }
+    if (next !== null && next !== "custom") {
       onPresetApplied?.();
     }
   };
@@ -57,25 +59,26 @@ export function InboxDueDatePresetPicker({
   return (
     <div className={cn("min-w-0", className)}>
       <RadioGroup
-        value={preset}
-        onValueChange={handleValueChange}
+        value={preset ?? ""}
+        onValueChange={(value) => applyPreset(value as InboxDatePreset)}
         className="gap-0"
         aria-label="Due date filter"
       >
-        {PRESETS.map(({ key, label }) => (
-          <div
-            key={key}
-            className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted"
-          >
-            <RadioGroupItem value={key} id={`due-preset-${key}`} />
-            <label
-              htmlFor={`due-preset-${key}`}
-              className="min-w-0 flex-1 cursor-pointer text-sm leading-snug font-normal"
-            >
-              {label}
-            </label>
-          </div>
-        ))}
+        {PRESETS.map(({ key, label }) => {
+          const checked = preset === key;
+          return (
+            <ToggleRadioFilterRow
+              key={key}
+              optionValue={key}
+              optionId={`due-preset-${key}`}
+              checked={checked}
+              label={label}
+              onToggle={() => {
+                applyPreset(toggleRadioFilterValue(preset, key));
+              }}
+            />
+          );
+        })}
       </RadioGroup>
       {preset === "custom" ? (
         <div className="space-y-3 border-t border-border/60 p-3">

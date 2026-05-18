@@ -1,22 +1,19 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import { cn } from "@/lib/utils";
 
 import {
-  buildAppointmentBlocks,
   DAY_GRID_START_MIN,
   formatAxisSlotTime,
-  layoutScheduleBlocks,
   SLOT_COUNT,
   SLOT_MINUTES,
   slotRowBorderClass,
 } from "./day-schedule-grid";
 import type { FilteredMatchDayOption } from "./schedule-date-row";
 import { ScheduleDateRow } from "./schedule-date-row";
-import { ScheduleOverflowPopover } from "./schedule-overflow-popover";
-import { ScheduleVisitGridTile } from "./schedule-visit-grid-tile";
+import { ScheduleBundleGrid } from "./schedule-bundle-grid";
 import type { Appointment } from "./types";
 
 export function AppointmentMasterList({
@@ -46,11 +43,6 @@ export function AppointmentMasterList({
   filteredMatchDayOptions?: readonly FilteredMatchDayOption[];
   onSelectFilteredCalendarDay?: (dateKey: string) => void;
 }) {
-  const { placements, overflowGroups } = useMemo(() => {
-    const blocks = buildAppointmentBlocks(items);
-    return layoutScheduleBlocks(blocks);
-  }, [items]);
-
   useEffect(() => {
     if (!selectedId) return;
     const el = document.querySelector(
@@ -158,51 +150,17 @@ export function AppointmentMasterList({
 
             <div
               className={cn(
-                "absolute inset-y-0",
+                "absolute inset-y-0 overflow-hidden",
                 fullBleed ? "left-0 right-0" : "left-1 right-1",
               )}
             >
-              {placements.map(({ block, laneIndex, displayColumnCount }) => {
-                  const endSlot = Math.min(
-                    block.startSlot + block.durationSlots,
-                    SLOT_COUNT,
-                  );
-                  const spanSlots = Math.max(1, endSlot - block.startSlot);
-                  const multi = displayColumnCount > 1;
-
-                  return (
-                    <ScheduleVisitGridTile
-                      key={block.appointment.id}
-                      appointment={block.appointment}
-                      isSelected={block.appointment.id === selectedId}
-                      spanSlots={spanSlots}
-                      onSelect={() => onSelectId(block.appointment.id)}
-                      style={{
-                        top: `calc(${block.startSlot} * var(--cf-slot) + 2px)`,
-                        height: `calc(${spanSlots} * var(--cf-slot) - 4px)`,
-                        left: multi
-                          ? `calc(${laneIndex} * (100% / ${displayColumnCount}))`
-                          : "0",
-                        width: multi
-                          ? `calc(100% / ${displayColumnCount})`
-                          : "100%",
-                      }}
-                    />
-                  );
-                },
-              )}
-
-              {overflowGroups.map((group) => (
-                <ScheduleOverflowPopover
-                  key={group.id}
-                  hiddenBlocks={group.hiddenBlocks}
-                  selectedId={selectedId}
-                  onSelectAppointment={onSelectId}
-                  anchorStartSlot={group.anchorStartSlot}
-                  spanSlots={group.spanSlots}
-                  displayColumnCount={group.displayColumnCount}
-                />
-              ))}
+              <ScheduleBundleGrid
+                appointments={items}
+                layoutMode="day-narrow"
+                selectedId={selectedId}
+                onSelectAppointment={onSelectId}
+                slotCssVar="--cf-slot"
+              />
             </div>
           </div>
         </div>

@@ -41,13 +41,13 @@ import { cn } from "@/lib/utils";
 
 function taskMatchesDueDatePreset(
   dueDate: string | undefined,
-  preset: InboxDatePreset,
+  preset: InboxDatePreset | null,
   customFrom: string | undefined,
   customTo: string | undefined,
   today: Date,
 ): boolean {
   const t0 = startOfDay(today);
-  if (preset === "all") return true;
+  if (preset === null) return true;
   if (!dueDate) return false;
   const d = startOfDay(parseISO(dueDate));
   if (preset === "today") return isSameDay(d, t0);
@@ -95,7 +95,7 @@ export default function InboxPage() {
   const [patientSearch, setPatientSearch] = useState("");
   const [selectedPcps, setSelectedPcps] = useState<string[]>([]);
   const [selectedNavigators, setSelectedNavigators] = useState<string[]>([]);
-  const [datePreset, setDatePreset] = useState<InboxDatePreset>("all");
+  const [datePreset, setDatePreset] = useState<InboxDatePreset | null>(null);
   const [customFrom, setCustomFrom] = useState<string | undefined>(undefined);
   const [customTo, setCustomTo] = useState<string | undefined>(undefined);
 
@@ -129,7 +129,7 @@ export default function InboxPage() {
 
   const today = useMemo(() => startOfDay(new Date()), []);
 
-  const hasDueDateFilter = datePreset !== "all";
+  const hasDueDateFilter = datePreset !== null;
   const hasActiveFilters =
     selectedPcps.length > 0 ||
     selectedNavigators.length > 0 ||
@@ -138,7 +138,7 @@ export default function InboxPage() {
   const clearAllFilters = useCallback(() => {
     setSelectedPcps([]);
     setSelectedNavigators([]);
-    setDatePreset("all");
+    setDatePreset(null);
     setCustomFrom(undefined);
     setCustomTo(undefined);
     setDesktopFilterMenu(null);
@@ -146,7 +146,7 @@ export default function InboxPage() {
   }, []);
 
   const clearDueDate = useCallback(() => {
-    setDatePreset("all");
+    setDatePreset(null);
     setCustomFrom(undefined);
     setCustomTo(undefined);
   }, []);

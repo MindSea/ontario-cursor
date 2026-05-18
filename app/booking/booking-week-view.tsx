@@ -93,7 +93,7 @@ export function BookingWeekView({
             return (
               <div
                 key={key}
-                className="min-w-0 flex-1 border-l border-border/20"
+                className="min-w-0 flex-1 overflow-hidden border-l border-border/20"
               >
                 <BookingScheduleDayColumn
                   appointments={list}

@@ -39,6 +39,7 @@ export function ScheduleVisitGridTile({
   onSelect,
   spanSlots,
   density: densityProp,
+  embedded = false,
   className,
   style,
 }: {
@@ -47,6 +48,8 @@ export function ScheduleVisitGridTile({
   onSelect: () => void;
   spanSlots: number;
   density?: ScheduleTileDensity;
+  /** Renders inside a parent card shell (no outer border/shadow). */
+  embedded?: boolean;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -61,17 +64,22 @@ export function ScheduleVisitGridTile({
       data-appointment-id={appointment.id}
       onClick={onSelect}
       className={cn(
-        "@container/visit absolute flex min-h-0 flex-col overflow-hidden rounded-md border text-left",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset",
+        "@container/visit flex min-h-0 flex-col overflow-hidden text-left",
+        embedded
+          ? "relative h-full w-full rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+          : cn(
+              "absolute rounded-md border",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset",
+              isSelected
+                ? "z-20 border-border bg-muted shadow-xl ring-1 ring-inset ring-primary/35"
+                : "z-10 border-border bg-muted/30 hover:bg-muted/55",
+            ),
         isShort ? "gap-0.5 px-2.5 py-1.5" : "gap-2 px-3 py-2",
-        isSelected
-          ? "z-20 border-border bg-muted shadow-xl ring-1 ring-inset ring-primary/35"
-          : "z-10 border-border bg-muted/30 hover:bg-muted/55",
         className,
       )}
       style={style}
     >
-      {isSelected ? (
+      {isSelected && !embedded ? (
         <span
           className="pointer-events-none absolute top-0.5 bottom-0.5 left-0 w-1 rounded-l-sm bg-primary"
           aria-hidden

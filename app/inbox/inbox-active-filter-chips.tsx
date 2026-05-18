@@ -25,7 +25,7 @@ export function InboxActiveFilterChips({
   onRemovePcp: (pcp: string) => void;
   selectedNavigators: readonly string[];
   onRemoveNavigator: (nav: string) => void;
-  datePreset: InboxDatePreset;
+  datePreset: InboxDatePreset | null;
   customFrom: string | undefined;
   customTo: string | undefined;
   onClearDueDate: () => void;

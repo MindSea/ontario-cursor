@@ -1,107 +1,60 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { ChevronDown } from "lucide-react";
-import { format, parseISO } from "date-fns";
 
+import { ToggleRadioFilterRow } from "@/components/toggle-radio-filter-row";
 import { Button } from "@/components/ui/button";
+import { RadioGroup } from "@/components/ui/radio-group";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { toggleRadioFilterValue } from "@/lib/toggle-radio-filter";
 import { cn } from "@/lib/utils";
 
-import { InboxDueDatePresetPicker } from "./inbox-due-date-preset-picker";
-
-export type InboxDatePreset = "today" | "next3" | "custom";
-
-const PRESET_LABEL: Record<InboxDatePreset, string> = {
-  today: "Today",
-  next3: "Next 3 days",
-  custom: "Custom range",
-};
-
-/** Full label for chips and other secondary UI. */
-export function summaryForDueDateFilter(
-  preset: InboxDatePreset | null,
-  customFrom: string | undefined,
-  customTo: string | undefined,
-): string {
-  if (preset === null) return "All";
-  if (preset === "custom") {
-    if (customFrom?.trim() && customTo?.trim()) {
-      try {
-        const a = format(parseISO(customFrom), "MMM d, yyyy");
-        const b = format(parseISO(customTo), "MMM d, yyyy");
-        return `${a} – ${b}`;
-      } catch {
-        return `${customFrom} – ${customTo}`;
-      }
-    }
-    return "Custom";
-  }
-  return PRESET_LABEL[preset];
-}
-
-/** Short label for the filter dropdown trigger. */
-export function summaryForDueDateFilterTrigger(
-  preset: InboxDatePreset | null,
-  customFrom: string | undefined,
-  customTo: string | undefined,
-): string {
-  if (preset === null) return "All";
-  if (preset === "today") return "Today";
-  if (preset === "next3") return "3 days";
-  if (preset === "custom") {
-    if (customFrom?.trim() && customTo?.trim()) {
-      try {
-        const a = format(parseISO(customFrom), "MMM d");
-        const b = format(parseISO(customTo), "MMM d");
-        return `${a}–${b}`;
-      } catch {
-        return "Custom";
-      }
-    }
-    return "Custom";
-  }
-  return "All";
-}
-
-export function InboxDueDateFilterDropdown({
+/**
+ * Single-select filter dropdown: `Category: summary` trigger + toggleable radios.
+ * Empty selection shows as “All” on the trigger (no All row in the menu).
+ */
+export function ScheduleFilterRadioSelectDropdown({
   idPrefix,
-  preset,
-  onPresetChange,
-  customFrom,
-  customTo,
-  onCustomFromChange,
-  onCustomToChange,
+  menuId,
   openMenu,
   setOpenMenu,
-  menuId,
+  categoryLabel,
+  options,
+  selected,
+  onChangeSelected,
+  formatOptionLabel,
+  formatSummary,
   fullWidth = false,
   compact = false,
-  popoverClassName,
 }: {
   idPrefix: string;
-  preset: InboxDatePreset | null;
-  onPresetChange: (p: InboxDatePreset | null) => void;
-  customFrom: string | undefined;
-  customTo: string | undefined;
-  onCustomFromChange: (v: string | undefined) => void;
-  onCustomToChange: (v: string | undefined) => void;
+  menuId: string;
   openMenu: string | null;
   setOpenMenu: (id: string | null) => void;
-  menuId: string;
+  categoryLabel: string;
+  options: readonly string[];
+  selected: readonly string[];
+  onChangeSelected: (next: string[]) => void;
+  formatOptionLabel?: (opt: string) => string;
+  formatSummary?: (selected: readonly string[]) => string;
   fullWidth?: boolean;
   compact?: boolean;
-  /** Extra classes for popover content (e.g. lift above a bottom sheet). */
-  popoverClassName?: string;
 }) {
   const open = openMenu === menuId;
-  const listboxDomId = `${idPrefix}-due-date-filter`;
+  const groupDomId = `${idPrefix}-filter-${menuId}-radiogroup`;
   const triggerMeasureRef = useRef<HTMLDivElement>(null);
   const [popoverWidthPx, setPopoverWidthPx] = useState<number | null>(null);
+
+  const selectedValue = selected.length === 1 ? selected[0]! : null;
 
   useLayoutEffect(() => {
     if (!open) {
@@ -120,11 +73,18 @@ export function InboxDueDateFilterDropdown({
     return () => ro.disconnect();
   }, [open]);
 
-  const summary = summaryForDueDateFilterTrigger(
-    preset,
-    customFrom,
-    customTo,
-  );
+  const summary = formatSummary
+    ? formatSummary(selected)
+    : selected.length === 0
+      ? "All"
+      : formatOptionLabel
+        ? formatOptionLabel(selected[0]!)
+        : selected[0]!;
+
+  const applySelection = (next: string | null, closeMenu: boolean) => {
+    onChangeSelected(next ? [next] : []);
+    if (closeMenu) setOpenMenu(null);
+  };
 
   return (
     <div
@@ -153,11 +113,11 @@ export function InboxDueDateFilterDropdown({
                 ? "h-9 min-h-9 px-2.5 py-0"
                 : "h-9 gap-1.5 px-3",
             )}
-            aria-haspopup="dialog"
-            aria-controls={open ? listboxDomId : undefined}
+            aria-haspopup="listbox"
+            aria-controls={open ? groupDomId : undefined}
           >
             <span className="min-w-0 truncate text-left text-sm leading-snug">
-              <span className="text-muted-foreground">Due date</span>
+              <span className="text-muted-foreground">{categoryLabel}</span>
               <span className="text-muted-foreground">: </span>
               <span
                 className={cn(
@@ -181,7 +141,6 @@ export function InboxDueDateFilterDropdown({
         <PopoverContent
           align="start"
           sideOffset={4}
-          id={listboxDomId}
           style={
             popoverWidthPx != null
               ? { width: popoverWidthPx, minWidth: popoverWidthPx, maxWidth: "none" }
@@ -191,24 +150,56 @@ export function InboxDueDateFilterDropdown({
             "z-130",
             "min-w-0 rounded-md border border-border bg-popover p-0 text-sm leading-snug text-popover-foreground shadow-md",
             popoverWidthPx == null && "min-w-48 max-w-[min(100vw-1rem,20rem)]",
-            popoverClassName,
           )}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <InboxDueDatePresetPicker
-            preset={preset}
-            onPresetChange={onPresetChange}
-            customFrom={customFrom}
-            customTo={customTo}
-            onCustomFromChange={onCustomFromChange}
-            onCustomToChange={onCustomToChange}
-            onClear={() => {
-              onPresetChange(null);
-              onCustomFromChange(undefined);
-              onCustomToChange(undefined);
-            }}
-            onPresetApplied={() => setOpenMenu(null)}
-          />
+          <RadioGroup
+            id={groupDomId}
+            value={selectedValue ?? ""}
+            onValueChange={(value) => applySelection(value, true)}
+            className="gap-0"
+            aria-label={categoryLabel}
+          >
+            {options.map((opt) => {
+              const itemId = `${idPrefix}-${menuId}-${opt}`;
+              const checked = selectedValue === opt;
+              return (
+                <ToggleRadioFilterRow
+                  key={opt}
+                  optionValue={opt}
+                  optionId={itemId}
+                  checked={checked}
+                  label={
+                    formatOptionLabel ? (
+                      <span className="wrap-break-word">{formatOptionLabel(opt)}</span>
+                    ) : (
+                      opt
+                    )
+                  }
+                  onToggle={() => {
+                    applySelection(
+                      toggleRadioFilterValue(selectedValue, opt),
+                      true,
+                    );
+                  }}
+                />
+              );
+            })}
+          </RadioGroup>
+          <div className="border-t border-border/60 p-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-9 w-full justify-center text-sm leading-snug text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                onChangeSelected([]);
+                setOpenMenu(null);
+              }}
+            >
+              Clear filter
+            </Button>
+          </div>
         </PopoverContent>
       </Popover>
     </div>

@@ -1,10 +1,12 @@
 "use client";
 
 import { ScheduleFilterMultiSelectDropdown } from "@/app/clinic-flow/schedule-filter-multiselect-dropdown";
+import { ScheduleFilterRadioSelectDropdown } from "@/app/clinic-flow/schedule-filter-radio-select-dropdown";
 import type { BuildingPresenceBucket } from "@/app/clinic-flow/schedule-building-filter";
 import {
   BUILDING_PRESENCE_BUCKET_LABEL,
   BUILDING_PRESENCE_BUCKET_ORDER,
+  buildingPresenceFilterTriggerSummary,
 } from "@/app/clinic-flow/schedule-building-filter";
 import {
   SCHEDULE_BOTTOM_SHEET_BODY_OUTER_CLASS,
@@ -100,7 +102,7 @@ export function BookingFiltersSheet({
               fullWidth
               compact
             />
-            <ScheduleFilterMultiSelectDropdown
+            <ScheduleFilterRadioSelectDropdown
               idPrefix={`${idPrefix}-sheet`}
               menuId="status"
               openMenu={openFilterMenu}
@@ -117,6 +119,11 @@ export function BookingFiltersSheet({
                 BUILDING_PRESENCE_BUCKET_LABEL[
                   opt as BuildingPresenceBucket
                 ]
+              }
+              formatSummary={(sel) =>
+                buildingPresenceFilterTriggerSummary(
+                  sel as BuildingPresenceBucket[],
+                )
               }
               fullWidth
               compact

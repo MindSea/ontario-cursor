@@ -12,6 +12,11 @@ import {
   startOfWeek,
   startOfYear,
 } from "date-fns";
+import { enUS } from "date-fns/locale";
+
+import {
+  formatScheduleDayLabelWithYear,
+} from "@/lib/calendar-format";
 
 export type BookingCalendarView = "day" | "week" | "month" | "year";
 
@@ -38,24 +43,23 @@ export function formatBookingAnchorLabel(
 ): string {
   switch (view) {
     case "day":
-      return anchor.toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      });
+      return formatScheduleDayLabelWithYear(anchor);
     case "week": {
       const start = startOfWeek(anchor, { weekStartsOn: 0 });
       const end = endOfWeek(anchor, { weekStartsOn: 0 });
       const sameMonth = start.getMonth() === end.getMonth();
-      const startStr = format(start, sameMonth ? "MMM d" : "MMM d, yyyy");
-      const endStr = format(end, "MMM d, yyyy");
+      const startStr = format(
+        start,
+        sameMonth ? "MMM d" : "MMM d, yyyy",
+        { locale: enUS },
+      );
+      const endStr = format(end, "MMM d, yyyy", { locale: enUS });
       return `${startStr} – ${endStr}`;
     }
     case "month":
-      return format(anchor, "MMMM yyyy");
+      return format(anchor, "MMMM yyyy", { locale: enUS });
     case "year":
-      return format(anchor, "yyyy");
+      return format(anchor, "yyyy", { locale: enUS });
   }
 }
 

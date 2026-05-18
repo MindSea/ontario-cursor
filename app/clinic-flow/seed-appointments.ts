@@ -15,6 +15,10 @@ import {
 
 import { intakeBundleProgressFromMissing } from "./intake-form-catalog";
 import { deriveSeedCheckedInAt } from "./schedule-agenda-seed";
+import {
+  capAppointmentDurationMins,
+  CLINIC_SEED_SLOT_TIMES,
+} from "./schedule-clock";
 import type {
   Appointment,
   AppointmentSeed,
@@ -58,18 +62,7 @@ const noMissingForms = [] as const;
 /** Same count each day; spread across the clinic day. */
 const SEED_APPOINTMENTS_PER_DAY = 10;
 
-const SEED_SLOT_TIMES = [
-  "08:00 AM",
-  "08:40 AM",
-  "09:20 AM",
-  "10:00 AM",
-  "10:40 AM",
-  "11:20 AM",
-  "12:10 PM",
-  "01:10 PM",
-  "02:20 PM",
-  "03:30 PM",
-] as const;
+const SEED_SLOT_TIMES = CLINIC_SEED_SLOT_TIMES;
 
 /** Today only: one row per template index (covers pipeline + two PREVISIT slots). */
 const SEED_TODAY_STAGES: readonly AppointmentStage[] = [
@@ -156,107 +149,112 @@ function alignFuturePrevisit(seed: AppointmentSeed): AppointmentSeed {
   };
 }
 
-/** Four visits at the same clock time — exercises overlap + overflow UI. */
-const DEMO_CONCURRENT_CLUSTER_TIME = "02:00 PM";
+type TodaySlotSpec = {
+  /** Index into `visitCoreTemplates`. */
+  templateIndex: number;
+  time: string;
+  durationMins: number;
+  stage: AppointmentStage;
+};
 
-const DEMO_CONCURRENT_CLUSTER_PATIENTS = [
-  {
-    patientId: PATIENT_HELEN_PARK,
-    patientName: "Helen Park",
-    dateOfBirth: "1950-01-11",
-    reason: "Walk-in blood pressure check",
-    appointmentType: "Follow-up Visit",
-    estimatedDurationMins: 30,
-    stage: "INTAKE" as const,
-    room: "RM 2",
-    pcp: "Dr. Patel",
-    navigator: "Anna",
-  },
-  {
-    patientId: PATIENT_DAVID_MILLER,
-    patientName: "David Miller",
-    dateOfBirth: "1940-05-05",
-    reason: "Diabetes follow-up",
-    appointmentType: "Chronic Care Visit",
-    estimatedDurationMins: 30,
-    stage: "ROOMING" as const,
-    room: "RM 5",
-    pcp: "Dr. Ellis",
-    navigator: "Marcus",
-  },
-  {
-    patientId: PATIENT_ROBERT_CHEN,
-    patientName: "Robert Chen",
-    dateOfBirth: "1945-10-02",
-    reason: "Medication reconciliation",
-    appointmentType: "Established Follow-up",
-    estimatedDurationMins: 45,
-    stage: "VISIT" as const,
-    room: "RM 3",
-    pcp: "Dr. Aris",
-    navigator: "Anna",
-  },
-  {
-    patientId: PATIENT_EVELYN_HART,
-    patientName: "Evelyn Hart",
-    dateOfBirth: "1943-04-22",
-    reason: "Lab draw (standing orders)",
-    appointmentType: "Lab Draw",
-    estimatedDurationMins: 60,
-    stage: "LABS" as const,
-    room: "LAB 1",
-    pcp: "Dr. Nguyen",
-    navigator: "Riley",
-  },
+/**
+ * Today: one visit per patient with overlap edge cases —
+ * morning staircase (8:00–10:00) and a 2:00 PM overflow cluster.
+ */
+const TODAY_SLOT_SPECS: readonly TodaySlotSpec[] = [
+  { templateIndex: 0, time: "08:00 AM", durationMins: 60, stage: "PREVISIT" },
+  { templateIndex: 1, time: "08:15 AM", durationMins: 60, stage: "INTAKE" },
+  { templateIndex: 3, time: "08:30 AM", durationMins: 60, stage: "ROOMING" },
+  { templateIndex: 4, time: "09:00 AM", durationMins: 60, stage: "VISIT" },
+  { templateIndex: 2, time: "09:30 AM", durationMins: 30, stage: "LABS" },
+  { templateIndex: 6, time: "11:45 AM", durationMins: 45, stage: "WRAP UP" },
+  { templateIndex: 8, time: "02:00 PM", durationMins: 30, stage: "INTAKE" },
+  { templateIndex: 9, time: "02:00 PM", durationMins: 45, stage: "CARE MANAGEMENT" },
+  { templateIndex: 5, time: "02:00 PM", durationMins: 30, stage: "VISIT" },
+  { templateIndex: 7, time: "02:15 PM", durationMins: 60, stage: "ROOMING" },
 ] as const;
 
-function buildDemoConcurrentClusterSeeds(
+function buildTodaySeeds(
+  templates: readonly AppointmentSeed[],
   today: string,
-  bookingWeekDay: string,
 ): AppointmentSeed[] {
-  const missing = ["Communication form"] as const;
-  const baseRooming = rooming({
-    registration: {
-      insurance: "Medicare",
-      pharmacy: "",
-      emergencyContact: "",
-      paymentSource: "Medicare",
-    },
-    orderedPoctTests: [],
-    medicationsOnFileMultiline: "",
+  const n = templates.length;
+  return TODAY_SLOT_SPECS.map((spec, i) => {
+    const t = templates[spec.templateIndex]!;
+    const stage = spec.stage;
+    return remapSeedIds(
+      {
+        ...t,
+        date: today,
+        time: spec.time,
+        estimatedDurationMins: capAppointmentDurationMins(spec.durationMins),
+        stage,
+        room: roomForStage(stage, t.room),
+      },
+      String(n + i + 1),
+    );
   });
+}
 
-  return DEMO_CONCURRENT_CLUSTER_PATIENTS.flatMap((row, i) => {
-    const shared = {
-      ...row,
-      time: DEMO_CONCURRENT_CLUSTER_TIME,
-      missingFormNames: missing,
-      ...intakeBundleProgressFromMissing(missing),
-      intakeFormResults: [],
-      huddleTasks: [],
-      rooming: baseRooming,
-      visit: visit({ supplyReferenceLines: [] }),
-      careManagement: careManagement({
-        recommendedCadence: "PCP: Follow-up as needed",
+/** Four same-start visits on the booking week column (when not already today). */
+function buildBookingWeekConcurrentClusterSeeds(
+  bookingWeekDay: string,
+  templates: readonly AppointmentSeed[],
+): AppointmentSeed[] {
+  const clusterSpecs: readonly TodaySlotSpec[] = [
+    { templateIndex: 8, time: "02:00 PM", durationMins: 30, stage: "PREVISIT" },
+    { templateIndex: 9, time: "02:00 PM", durationMins: 45, stage: "PREVISIT" },
+    { templateIndex: 5, time: "02:00 PM", durationMins: 30, stage: "PREVISIT" },
+    { templateIndex: 7, time: "02:15 PM", durationMins: 60, stage: "PREVISIT" },
+  ];
+
+  return clusterSpecs.map((spec, i) => {
+    const t = templates[spec.templateIndex]!;
+    return remapSeedIds(
+      alignFuturePrevisit({
+        ...t,
+        id: `demo-c-week-${i + 1}`,
+        date: bookingWeekDay,
+        time: spec.time,
+        estimatedDurationMins: capAppointmentDurationMins(spec.durationMins),
+        stage: spec.stage,
+        room: roomForStage("PREVISIT", t.room),
+        missingFormNames: ["Communication form"],
+        ...intakeBundleProgressFromMissing(["Communication form"]),
+        intakeFormResults: [],
+        huddleTasks: [],
+        rooming: rooming({
+          registration: {
+            insurance: "Medicare",
+            pharmacy: "",
+            emergencyContact: "",
+            paymentSource: "Medicare",
+          },
+          orderedPoctTests: [],
+          medicationsOnFileMultiline: "",
+        }),
+        visit: visit({ supplyReferenceLines: [] }),
+        careManagement: careManagement({
+          recommendedCadence: "PCP: Follow-up as needed",
+        }),
       }),
-    };
-
-    const todaySeed: AppointmentSeed = {
-      ...shared,
-      id: `demo-c-today-${i + 1}`,
-      date: today,
-      room: roomForStage(row.stage, row.room),
-    };
-
-    const weekSeed = alignFuturePrevisit({
-      ...shared,
-      id: `demo-c-week-${i + 1}`,
-      date: bookingWeekDay,
-      stage: "PREVISIT",
-    });
-
-    return [todaySeed, weekSeed];
+      `demo-c-week-${i + 1}`,
+    );
   });
+}
+
+function assertUniquePatientPerDay(seeds: readonly AppointmentSeed[]): void {
+  const seen = new Map<string, string>();
+  for (const seed of seeds) {
+    const key = `${seed.date}:${seed.patientId}`;
+    const existing = seen.get(key);
+    if (existing) {
+      throw new Error(
+        `Duplicate patient on ${seed.date}: ${seed.patientId} (${existing} and ${seed.id})`,
+      );
+    }
+    seen.set(key, seed.id);
+  }
 }
 
 /** Offsets so yesterday/tomorrow do not mirror today's patient×time grid in Booking. */
@@ -267,7 +265,6 @@ const TOMORROW_SLOT_OFFSET = 5;
 
 function buildTriDaySeeds(
   yesterday: string,
-  today: string,
   tomorrow: string,
   templates: readonly AppointmentSeed[],
 ): AppointmentSeed[] {
@@ -290,23 +287,6 @@ function buildTriDaySeeds(
           time: slots[(i + YESTERDAY_SLOT_OFFSET) % n]!,
         }),
         String(i + 1),
-      ),
-    );
-  }
-
-  for (let i = 0; i < n; i++) {
-    const t = templates[i]!;
-    const stage = SEED_TODAY_STAGES[i]!;
-    out.push(
-      remapSeedIds(
-        {
-          ...t,
-          date: today,
-          time: slots[i]!,
-          stage,
-          room: roomForStage(stage, t.room),
-        },
-        String(n + i + 1),
       ),
     );
   }
@@ -344,11 +324,10 @@ function buildTriDaySeeds(
  * “Schedule next appointment at TSH” (demo variety).
  *
  * Calendar: exactly `SEED_APPOINTMENTS_PER_DAY` visits on each of yesterday, today,
- * and tomorrow (rolling dates). The same ten visit profiles are reused, but
- * yesterday and tomorrow permute which patient sits in which slot so Booking does
- * not show identical columns three days in a row. Yesterday all `COMPLETED`; today
- * uses `SEED_TODAY_STAGES` with canonical slot order; tomorrow all `PREVISIT`.
- * Nested ids are remapped per appointment (ids `1`–`30`).
+ * and tomorrow (rolling dates). Today uses a fixed schedule (staircase overlaps +
+ * 2:00 PM cluster) with one visit per patient. Yesterday and tomorrow permute
+ * templates so Booking does not show identical columns three days in a row.
+ * Nested ids are remapped per appointment.
  */
 
 export function buildSeedAppointments(): Appointment[] {
@@ -512,7 +491,7 @@ export function buildSeedAppointments(): Appointment[] {
       stage: "INTAKE",
       reason: "Follow-up (Diabetes)",
       appointmentType: "Established Follow-up",
-      estimatedDurationMins: 20,
+      estimatedDurationMins: 30,
       pcp: "Dr. Aris",
       navigator: "Anna",
       missingFormNames: missingRobert,
@@ -1017,10 +996,22 @@ export function buildSeedAppointments(): Appointment[] {
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
   const bookingWeekDay = format(addDays(weekStart, 3), "yyyy-MM-dd");
 
-  const seeds = [
-    ...buildTriDaySeeds(yesterday, today, tomorrow, visitCoreTemplates),
-    ...buildDemoConcurrentClusterSeeds(today, bookingWeekDay),
-  ];
+  const triDay = buildTriDaySeeds(yesterday, tomorrow, visitCoreTemplates);
+  const todaySeeds = buildTodaySeeds(visitCoreTemplates, today);
+  const weekClusterOnTriDay =
+    bookingWeekDay === today ||
+    bookingWeekDay === yesterday ||
+    bookingWeekDay === tomorrow;
+  const weekCluster = weekClusterOnTriDay
+    ? []
+    : buildBookingWeekConcurrentClusterSeeds(
+        bookingWeekDay,
+        visitCoreTemplates,
+      );
+
+  const seeds = [...triDay, ...todaySeeds, ...weekCluster];
+  assertUniquePatientPerDay(seeds);
+
   return seeds.map((a) => ({
     ...a,
     checkedInAt: deriveSeedCheckedInAt(a),
