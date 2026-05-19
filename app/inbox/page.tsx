@@ -17,6 +17,7 @@ import { listPatientsForPanelInbox } from "@/app/patient-profile/patient-profile
 import { usePanelTasksStore } from "@/app/patient-profile/panel-tasks-store";
 import { usePatientProfileUrlState } from "@/app/patient-profile/use-patient-profile-url-state";
 import type { LongTermPanelTask, PatientId } from "@/app/patient-profile/types";
+import { DEMO_ACCOUNT_NAVIGATOR } from "@/app/clinic-flow/schedule-constants";
 import { ScheduleFilterMultiSelectDropdown } from "@/app/clinic-flow/schedule-filter-multiselect-dropdown";
 import {
   InboxDueDateFilterDropdown,
@@ -94,7 +95,9 @@ export default function InboxPage() {
 
   const [patientSearch, setPatientSearch] = useState("");
   const [selectedPcps, setSelectedPcps] = useState<string[]>([]);
-  const [selectedNavigators, setSelectedNavigators] = useState<string[]>([]);
+  const [selectedNavigators, setSelectedNavigators] = useState<string[]>([
+    DEMO_ACCOUNT_NAVIGATOR,
+  ]);
   const [datePreset, setDatePreset] = useState<InboxDatePreset | null>(null);
   const [customFrom, setCustomFrom] = useState<string | undefined>(undefined);
   const [customTo, setCustomTo] = useState<string | undefined>(undefined);

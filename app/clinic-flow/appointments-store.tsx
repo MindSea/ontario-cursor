@@ -21,14 +21,11 @@ import type { Appointment } from "./types";
  * (e.g. stage / room from the profile detail) stayed local and were
  * invisible to the other.
  *
- * Scope intentionally narrow: only the schedule-level fields on
- * `Appointment` (stage, room, checked-in timestamp, etc.) live here.
- * Internal section state (huddle checkbox toggles, previsit notes,
- * intake form drafts, etc.) is local to each section component
- * instance — that's how clinic-flow already models it, so edits inside
- * a section in one surface won't sync to the other. Stage and room
- * changes DO sync, which is what the patient-profile master/detail
- * relies on.
+ * Schedule-level fields on `Appointment` (stage, room, checked-in
+ * timestamp, `huddleTasks`, etc.) live here. Other section state
+ * (previsit notes, intake form drafts, etc.) may still be local to each
+ * section component. Stage, room, and huddle task changes sync across
+ * clinic-flow and the patient profile.
  *
  * UI-only state (selected appointment id, mobile two-pane state) is
  * not managed here — each consumer keeps its own view state.

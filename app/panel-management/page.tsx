@@ -9,6 +9,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { DEMO_ACCOUNT_NAVIGATOR } from "@/app/clinic-flow/schedule-constants";
 import { ScheduleFilterMultiSelectDropdown } from "@/app/clinic-flow/schedule-filter-multiselect-dropdown";
 import { PatientProfileDialog } from "@/app/patient-profile/patient-profile-dialog";
 import { listPatientsForPanelInbox } from "@/app/patient-profile/patient-profile-seed";
@@ -45,7 +46,9 @@ export default function PanelManagementPage() {
 
   const [patientSearch, setPatientSearch] = useState("");
   const [selectedPcps, setSelectedPcps] = useState<string[]>([]);
-  const [selectedNavigators, setSelectedNavigators] = useState<string[]>([]);
+  const [selectedNavigators, setSelectedNavigators] = useState<string[]>([
+    DEMO_ACCOUNT_NAVIGATOR,
+  ]);
 
   const [desktopFilterMenu, setDesktopFilterMenu] = useState<string | null>(
     null,

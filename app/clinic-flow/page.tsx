@@ -27,6 +27,9 @@ import type { ScheduleViewMode } from "./schedule-view-toggle";
 import { PatientProfileDialog } from "@/app/patient-profile/patient-profile-dialog";
 import { usePatientProfileUrlState } from "@/app/patient-profile/use-patient-profile-url-state";
 
+import { HuddleModal } from "./huddle-modal";
+import { useHuddleFlow } from "./use-huddle-flow";
+
 const SCHEDULE_VIEW_MODE_STORAGE_KEY = "clinic-flow.scheduleViewMode";
 
 export default function ClinicFlowPage() {
@@ -48,7 +51,7 @@ export default function ClinicFlowPage() {
   ]);
   const [selectedBuildingBuckets, setSelectedBuildingBuckets] = useState<
     BuildingPresenceBucket[]
-  >(["in_building"]);
+  >([]);
 
   const [patientSearchQuery, setPatientSearchQuery] = useState("");
   const [scheduleViewMode, setScheduleViewMode] =
@@ -82,6 +85,16 @@ export default function ClinicFlowPage() {
     () => format(selectedDate, "yyyy-MM-dd"),
     [selectedDate],
   );
+
+  const {
+    huddleOpen,
+    setHuddleOpen,
+    huddleButton,
+    huddleModal,
+  } = useHuddleFlow({
+    appointments,
+    selectedDateKey,
+  });
 
   const appointmentsPassingFilters = useMemo(
     () =>
@@ -204,6 +217,7 @@ export default function ClinicFlowPage() {
         filteredMatchDayOptions={filteredMatchDayOptions}
         onSelectFilteredCalendarDay={selectFilteredCalendarDay}
         onOpenPatientProfile={patientProfile.open}
+        huddleButton={huddleButton}
       />
 
       <ClinicFlowDesktop
@@ -226,6 +240,16 @@ export default function ClinicFlowPage() {
         onScheduleViewModeChange={handleScheduleViewModeChange}
         filteredMatchDayOptions={filteredMatchDayOptions}
         onSelectFilteredCalendarDay={selectFilteredCalendarDay}
+        onOpenPatientProfile={patientProfile.open}
+        huddleButton={huddleButton}
+      />
+      <HuddleModal
+        open={huddleOpen}
+        onOpenChange={setHuddleOpen}
+        dateKey={huddleModal.dateKey}
+        period={huddleModal.period}
+        appointments={huddleModal.appointments}
+        session={huddleModal.session}
         onOpenPatientProfile={patientProfile.open}
       />
       <PatientProfileDialog

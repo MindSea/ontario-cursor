@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { ChecklistLabelActionRow } from "./checklist-label-action-row";
 import { CHECKLIST_META_WHEN_ROW_DONE } from "./checklist-workspace-styles";
 import type { Appointment } from "./types";
+import { useWorkspaceSection } from "./workspace-section-collapse-context";
 
 const CARE_MANAGEMENT_CHECKBOX_TOTAL = 3;
 
@@ -66,7 +67,12 @@ export function CareManagementSection({
   const [scheduleNext, setScheduleNext] = useState(false);
   const [reviewPlanAvs, setReviewPlanAvs] = useState(false);
 
-  const [careCollapsed, setCareCollapsed] = useState(false);
+  const {
+    collapsed: careCollapsed,
+    toggleCollapsed: toggleCareCollapsed,
+    scrollId,
+    sectionSurfaceClass,
+  } = useWorkspaceSection("care-management");
   const [careUncheckOpen, setCareUncheckOpen] = useState(false);
 
   const [toast, setToast] = useState<string | null>(null);
@@ -85,7 +91,6 @@ export function CareManagementSection({
       setReviewFollowUp(false);
       setScheduleNext(false);
       setReviewPlanAvs(false);
-      setCareCollapsed(false);
       setCareUncheckOpen(false);
     });
   }, [appointment.id]);
@@ -114,7 +119,8 @@ export function CareManagementSection({
   return (
     <div className="min-w-0 w-full">
       <section
-        className={cn(textBody, sectionClass)}
+        id={scrollId}
+        className={cn(textBody, sectionClass, sectionSurfaceClass)}
         aria-labelledby={`${baseId}-title`}
       >
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -156,7 +162,7 @@ export function CareManagementSection({
                   ? "Expand Care Management section"
                   : "Collapse Care Management section"
               }
-              onClick={() => setCareCollapsed((c) => !c)}
+              onClick={toggleCareCollapsed}
             >
               {careCollapsed ? (
                 <ChevronDown className="size-4" aria-hidden />

@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { CHECKLIST_META_WHEN_ROW_DONE } from "./checklist-workspace-styles";
 import { MutedTagBadge } from "./muted-tag-badge";
 import type { Appointment } from "./types";
+import { useWorkspaceSection } from "./workspace-section-collapse-context";
 
 const VISIT_CHECKBOX_TOTAL = 4;
 
@@ -67,7 +68,12 @@ export function VisitSection({
   const [returnAfterPcp, setReturnAfterPcp] = useState(false);
   const [suppliesDone, setSuppliesDone] = useState(false);
 
-  const [visitCollapsed, setVisitCollapsed] = useState(false);
+  const {
+    collapsed: visitCollapsed,
+    toggleCollapsed: toggleVisitCollapsed,
+    scrollId,
+    sectionSurfaceClass,
+  } = useWorkspaceSection("visit");
   const [visitUncheckOpen, setVisitUncheckOpen] = useState(false);
 
   const supplyLines = appointment.visit.supplyReferenceLines;
@@ -78,7 +84,6 @@ export function VisitSection({
       setReenterRoom(false);
       setReturnAfterPcp(false);
       setSuppliesDone(false);
-      setVisitCollapsed(false);
       setVisitUncheckOpen(false);
     });
   }, [appointment.id]);
@@ -108,7 +113,11 @@ export function VisitSection({
   const allVisitChecked = visitCheckedCount === VISIT_CHECKBOX_TOTAL;
 
   return (
-    <section className={cn(textBody, sectionClass)} aria-labelledby={`${baseId}-title`}>
+    <section
+      id={scrollId}
+      className={cn(textBody, sectionClass, sectionSurfaceClass)}
+      aria-labelledby={`${baseId}-title`}
+    >
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h3
           id={`${baseId}-title`}
@@ -146,7 +155,7 @@ export function VisitSection({
             aria-label={
               visitCollapsed ? "Expand Visit section" : "Collapse Visit section"
             }
-            onClick={() => setVisitCollapsed((c) => !c)}
+            onClick={toggleVisitCollapsed}
           >
             {visitCollapsed ? (
               <ChevronDown className="size-4" aria-hidden />

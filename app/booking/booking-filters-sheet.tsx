@@ -1,13 +1,6 @@
 "use client";
 
 import { ScheduleFilterMultiSelectDropdown } from "@/app/clinic-flow/schedule-filter-multiselect-dropdown";
-import { ScheduleFilterRadioSelectDropdown } from "@/app/clinic-flow/schedule-filter-radio-select-dropdown";
-import type { BuildingPresenceBucket } from "@/app/clinic-flow/schedule-building-filter";
-import {
-  BUILDING_PRESENCE_BUCKET_LABEL,
-  BUILDING_PRESENCE_BUCKET_ORDER,
-  buildingPresenceFilterTriggerSummary,
-} from "@/app/clinic-flow/schedule-building-filter";
 import {
   SCHEDULE_BOTTOM_SHEET_BODY_OUTER_CLASS,
   SCHEDULE_BOTTOM_SHEET_BODY_SCROLL_CLASS,
@@ -36,8 +29,6 @@ export function BookingFiltersSheet({
   navigatorOptions,
   selectedNavigators,
   onChangeSelectedNavigators,
-  selectedBuildingBuckets,
-  onChangeSelectedBuildingBuckets,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -50,8 +41,6 @@ export function BookingFiltersSheet({
   navigatorOptions: readonly string[];
   selectedNavigators: readonly string[];
   onChangeSelectedNavigators: (next: string[]) => void;
-  selectedBuildingBuckets: readonly BuildingPresenceBucket[];
-  onChangeSelectedBuildingBuckets: (next: BuildingPresenceBucket[]) => void;
 }) {
   return (
     <Sheet
@@ -99,32 +88,6 @@ export function BookingFiltersSheet({
               options={navigatorOptions}
               selected={selectedNavigators}
               onChangeSelected={onChangeSelectedNavigators}
-              fullWidth
-              compact
-            />
-            <ScheduleFilterRadioSelectDropdown
-              idPrefix={`${idPrefix}-sheet`}
-              menuId="status"
-              openMenu={openFilterMenu}
-              setOpenMenu={setOpenFilterMenu}
-              categoryLabel="Status"
-              options={BUILDING_PRESENCE_BUCKET_ORDER}
-              selected={selectedBuildingBuckets}
-              onChangeSelected={(next) =>
-                onChangeSelectedBuildingBuckets(
-                  next as BuildingPresenceBucket[],
-                )
-              }
-              formatOptionLabel={(opt) =>
-                BUILDING_PRESENCE_BUCKET_LABEL[
-                  opt as BuildingPresenceBucket
-                ]
-              }
-              formatSummary={(sel) =>
-                buildingPresenceFilterTriggerSummary(
-                  sel as BuildingPresenceBucket[],
-                )
-              }
               fullWidth
               compact
             />

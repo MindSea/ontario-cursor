@@ -16,16 +16,9 @@ import {
   CLINIC_FLOW_SEED_NAVIGATORS,
   CLINIC_FLOW_SEED_PCPS,
 } from "@/app/clinic-flow/seed-appointments";
+import { DEMO_ACCOUNT_NAVIGATOR } from "@/app/clinic-flow/schedule-constants";
 import { filterAppointmentsForScheduleToolbar } from "@/app/clinic-flow/schedule-appointment-filters";
-import {
-  BUILDING_PRESENCE_BUCKET_LABEL,
-  BUILDING_PRESENCE_BUCKET_ORDER,
-  buildingPresenceFilterNarrows,
-  buildingPresenceFilterTriggerSummary,
-  type BuildingPresenceBucket,
-} from "@/app/clinic-flow/schedule-building-filter";
 import { ScheduleFilterMultiSelectDropdown } from "@/app/clinic-flow/schedule-filter-multiselect-dropdown";
-import { ScheduleFilterRadioSelectDropdown } from "@/app/clinic-flow/schedule-filter-radio-select-dropdown";
 import { ScheduleDateRow } from "@/app/clinic-flow/schedule-date-row";
 import type { Appointment } from "@/app/clinic-flow/types";
 import { PatientProfileDialog } from "@/app/patient-profile/patient-profile-dialog";
@@ -105,10 +98,9 @@ export default function BookingPage() {
   }, []);
   const [patientSearch, setPatientSearch] = useState("");
   const [selectedPcps, setSelectedPcps] = useState<string[]>([]);
-  const [selectedNavigators, setSelectedNavigators] = useState<string[]>([]);
-  const [selectedBuildingBuckets, setSelectedBuildingBuckets] = useState<
-    BuildingPresenceBucket[]
-  >([]);
+  const [selectedNavigators, setSelectedNavigators] = useState<string[]>([
+    DEMO_ACCOUNT_NAVIGATOR,
+  ]);
 
   const [desktopFilterMenu, setDesktopFilterMenu] = useState<string | null>(
     null,
@@ -147,9 +139,9 @@ export default function BookingPage() {
       filterAppointmentsForScheduleToolbar(appointments, {
         selectedPcps,
         selectedNavigators,
-        selectedBuildingBuckets,
+        selectedBuildingBuckets: [],
       }),
-    [appointments, selectedPcps, selectedNavigators, selectedBuildingBuckets],
+    [appointments, selectedPcps, selectedNavigators],
   );
 
   const filteredAppointments = useMemo(() => {
@@ -174,14 +166,11 @@ export default function BookingPage() {
   );
 
   const hasActiveFilters =
-    selectedPcps.length > 0 ||
-    selectedNavigators.length > 0 ||
-    buildingPresenceFilterNarrows(selectedBuildingBuckets);
+    selectedPcps.length > 0 || selectedNavigators.length > 0;
 
   const clearAllFilters = useCallback(() => {
     setSelectedPcps([]);
     setSelectedNavigators([]);
-    setSelectedBuildingBuckets([]);
     setDesktopFilterMenu(null);
     setSheetFilterMenu(null);
   }, []);
@@ -208,12 +197,6 @@ export default function BookingPage() {
       selectedNavigators={selectedNavigators}
       onRemoveNavigator={(n) =>
         setSelectedNavigators(selectedNavigators.filter((x) => x !== n))
-      }
-      selectedBuildingBuckets={selectedBuildingBuckets}
-      onRemoveBuildingBucket={(b) =>
-        setSelectedBuildingBuckets(
-          selectedBuildingBuckets.filter((x) => x !== b),
-        )
       }
       onClearAll={clearAllFilters}
     />
@@ -269,26 +252,6 @@ export default function BookingPage() {
               options={[...CLINIC_FLOW_SEED_NAVIGATORS]}
               selected={selectedNavigators}
               onChangeSelected={setSelectedNavigators}
-            />
-            <ScheduleFilterRadioSelectDropdown
-              idPrefix={filterIdPrefix}
-              menuId="status"
-              openMenu={desktopFilterMenu}
-              setOpenMenu={setDesktopFilterMenu}
-              categoryLabel="Status"
-              options={BUILDING_PRESENCE_BUCKET_ORDER}
-              selected={selectedBuildingBuckets}
-              onChangeSelected={(next) =>
-                setSelectedBuildingBuckets(next as BuildingPresenceBucket[])
-              }
-              formatOptionLabel={(opt) =>
-                BUILDING_PRESENCE_BUCKET_LABEL[opt as BuildingPresenceBucket]
-              }
-              formatSummary={(sel) =>
-                buildingPresenceFilterTriggerSummary(
-                  sel as BuildingPresenceBucket[],
-                )
-              }
             />
           </div>
           {filterChips ? (
@@ -405,8 +368,6 @@ export default function BookingPage() {
         navigatorOptions={[...CLINIC_FLOW_SEED_NAVIGATORS]}
         selectedNavigators={selectedNavigators}
         onChangeSelectedNavigators={setSelectedNavigators}
-        selectedBuildingBuckets={selectedBuildingBuckets}
-        onChangeSelectedBuildingBuckets={setSelectedBuildingBuckets}
       />
 
       <BookingAppointmentDialog

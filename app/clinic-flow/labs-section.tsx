@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { buildLabSupplyBundles } from "./labs-supply-catalog";
 import { CHECKLIST_META_WHEN_ROW_DONE } from "./checklist-workspace-styles";
 import type { Appointment } from "./types";
+import { useWorkspaceSection } from "./workspace-section-collapse-context";
 
 const LABS_CHECKBOX_TOTAL = 1;
 
@@ -119,13 +120,17 @@ export function LabsSection({
     Record<string, BundleDisposition>
   >({});
 
-  const [labsCollapsed, setLabsCollapsed] = useState(false);
+  const {
+    collapsed: labsCollapsed,
+    toggleCollapsed: toggleLabsCollapsed,
+    scrollId,
+    sectionSurfaceClass,
+  } = useWorkspaceSection("labs");
   const [labsUncheckOpen, setLabsUncheckOpen] = useState(false);
 
   useEffect(() => {
     queueMicrotask(() => {
       setLabsComplete(false);
-      setLabsCollapsed(false);
       setLabsUncheckOpen(false);
       const next: Record<string, BundleDisposition> = {};
       for (const b of buildLabSupplyBundles(appointment.visit.supplyReferenceLines)) {
@@ -176,7 +181,11 @@ export function LabsSection({
   }, []);
 
   return (
-    <section className={cn(textBody, sectionClass)} aria-labelledby={`${baseId}-title`}>
+    <section
+      id={scrollId}
+      className={cn(textBody, sectionClass, sectionSurfaceClass)}
+      aria-labelledby={`${baseId}-title`}
+    >
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h3
           id={`${baseId}-title`}
@@ -214,7 +223,7 @@ export function LabsSection({
             aria-label={
               labsCollapsed ? "Expand Labs section" : "Collapse Labs section"
             }
-            onClick={() => setLabsCollapsed((c) => !c)}
+            onClick={toggleLabsCollapsed}
           >
             {labsCollapsed ? (
               <ChevronDown className="size-4" aria-hidden />

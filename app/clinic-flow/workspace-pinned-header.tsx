@@ -21,6 +21,7 @@ import {
   APPOINTMENT_STAGE_ORDER,
   formatAppointmentStage,
 } from "./stage-display";
+import { WorkspaceVisitReasonLine } from "./workspace-visit-reason-line";
 
 export function WorkspacePinnedHeader({
   appointment,
@@ -115,14 +116,10 @@ export function WorkspacePinnedHeader({
                   <span className="px-1 text-muted-foreground/70">|</span>
                   Navigator: {appointment.navigator}
                 </p>
-                <div className="mt-1.5 block w-full min-w-0 md:mt-2">
-                  <p className={cn("truncate", textBody)}>
-                    <span className="font-medium text-muted-foreground">
-                      Reason for Visit:{" "}
-                    </span>
-                    {appointment.reason}
-                  </p>
-                </div>
+                <WorkspaceVisitReasonLine
+                  reason={appointment.reason}
+                  className="mt-1.5 md:mt-2"
+                />
               </div>
 
               <div className="flex w-full min-w-0 flex-row flex-wrap items-center gap-x-2 gap-y-2 md:gap-x-3 md:gap-y-2">

@@ -45,6 +45,18 @@ export const CLINIC_FLOW_SEED_NAVIGATORS = [
   "Sam",
 ] as const;
 
+/** Demo pairing: each navigator covers one or two PCPs (see `visitCoreTemplates`). */
+export const CLINIC_FLOW_NAVIGATOR_PCP_ROSTER: Record<
+  (typeof CLINIC_FLOW_SEED_NAVIGATORS)[number],
+  readonly string[]
+> = {
+  Anna: ["Dr. Ellis", "Dr. Aris"],
+  Marcus: ["Dr. Kim"],
+  Jordan: ["Dr. Patel"],
+  Riley: ["Dr. Nguyen"],
+  Sam: ["Dr. Nguyen"],
+};
+
 function rooming(seed: RoomingSeed): RoomingSeed {
   return seed;
 }
@@ -158,20 +170,20 @@ type TodaySlotSpec = {
 };
 
 /**
- * Today: one visit per patient with overlap edge cases —
- * morning staircase (8:00–10:00) and a 2:00 PM overflow cluster.
+ * Today: one visit per patient; navigators each cover 1–2 PCPs.
+ * Anna: Dr. Ellis + Dr. Aris — 3 morning / 3 afternoon visits (2 Ellis PM).
  */
 const TODAY_SLOT_SPECS: readonly TodaySlotSpec[] = [
   { templateIndex: 0, time: "08:00 AM", durationMins: 60, stage: "PREVISIT" },
   { templateIndex: 1, time: "08:15 AM", durationMins: 60, stage: "INTAKE" },
-  { templateIndex: 3, time: "08:30 AM", durationMins: 60, stage: "ROOMING" },
-  { templateIndex: 4, time: "09:00 AM", durationMins: 60, stage: "VISIT" },
-  { templateIndex: 2, time: "09:30 AM", durationMins: 30, stage: "LABS" },
-  { templateIndex: 6, time: "11:45 AM", durationMins: 45, stage: "WRAP UP" },
+  { templateIndex: 6, time: "09:00 AM", durationMins: 45, stage: "VISIT" },
+  { templateIndex: 2, time: "08:30 AM", durationMins: 30, stage: "ROOMING" },
+  { templateIndex: 3, time: "09:30 AM", durationMins: 30, stage: "VISIT" },
+  { templateIndex: 5, time: "11:45 AM", durationMins: 15, stage: "LABS" },
   { templateIndex: 8, time: "02:00 PM", durationMins: 30, stage: "INTAKE" },
-  { templateIndex: 9, time: "02:00 PM", durationMins: 45, stage: "CARE MANAGEMENT" },
-  { templateIndex: 5, time: "02:00 PM", durationMins: 30, stage: "VISIT" },
-  { templateIndex: 7, time: "02:15 PM", durationMins: 60, stage: "ROOMING" },
+  { templateIndex: 9, time: "02:15 PM", durationMins: 45, stage: "CARE MANAGEMENT" },
+  { templateIndex: 7, time: "02:30 PM", durationMins: 30, stage: "WRAP UP" },
+  { templateIndex: 4, time: "02:00 PM", durationMins: 30, stage: "VISIT" },
 ] as const;
 
 function buildTodaySeeds(
@@ -241,6 +253,23 @@ function buildBookingWeekConcurrentClusterSeeds(
       `demo-c-week-${i + 1}`,
     );
   });
+}
+
+/** Each navigator is paired with at most two PCPs across the demo roster. */
+function assertNavigatorPcpLimits(seeds: readonly AppointmentSeed[]): void {
+  const pcpsByNavigator = new Map<string, Set<string>>();
+  for (const seed of seeds) {
+    const set = pcpsByNavigator.get(seed.navigator) ?? new Set();
+    set.add(seed.pcp);
+    pcpsByNavigator.set(seed.navigator, set);
+  }
+  for (const [navigator, pcps] of pcpsByNavigator) {
+    if (pcps.size > 2) {
+      throw new Error(
+        `Navigator ${navigator} is assigned to ${pcps.size} PCPs (${[...pcps].join(", ")}); max is 2.`,
+      );
+    }
+  }
 }
 
 function assertUniquePatientPerDay(seeds: readonly AppointmentSeed[]): void {
@@ -571,7 +600,7 @@ export function buildSeedAppointments(): Appointment[] {
       reason: "Acute: Cough",
       appointmentType: "Acute Sick Visit",
       estimatedDurationMins: 30,
-      pcp: "Dr. Kim",
+      pcp: "Dr. Patel",
       navigator: "Jordan",
       missingFormNames: missingElena,
       ...intakeBundleProgressFromMissing(missingElena),
@@ -619,7 +648,7 @@ export function buildSeedAppointments(): Appointment[] {
       reason: "HTN Management",
       appointmentType: "Chronic Care Visit",
       estimatedDurationMins: 30,
-      pcp: "Dr. Patel",
+      pcp: "Dr. Nguyen",
       navigator: "Riley",
       missingFormNames: missingJames,
       ...intakeBundleProgressFromMissing(missingJames),
@@ -767,7 +796,7 @@ export function buildSeedAppointments(): Appointment[] {
       reason: "Blood Work",
       appointmentType: "Lab Draw",
       estimatedDurationMins: 15,
-      pcp: "Dr. Aris",
+      pcp: "Dr. Kim",
       navigator: "Marcus",
       missingFormNames: missingSamuel,
       ...intakeBundleProgressFromMissing(missingSamuel),
@@ -836,7 +865,7 @@ export function buildSeedAppointments(): Appointment[] {
       reason: "Post-Op Check",
       appointmentType: "Procedure Follow-up",
       estimatedDurationMins: 45,
-      pcp: "Dr. Kim",
+      pcp: "Dr. Ellis",
       navigator: "Anna",
       missingFormNames: missingLinda,
       ...intakeBundleProgressFromMissing(missingLinda),
@@ -879,7 +908,7 @@ export function buildSeedAppointments(): Appointment[] {
       appointmentType: "Medicare wellness & vaccines",
       estimatedDurationMins: 30,
       pcp: "Dr. Ellis",
-      navigator: "Marcus",
+      navigator: "Anna",
       missingFormNames: missingDavid,
       ...intakeBundleProgressFromMissing(missingDavid),
       intakeFormResults: [
@@ -934,7 +963,7 @@ export function buildSeedAppointments(): Appointment[] {
       reason: "Medication review (completed)",
       appointmentType: "Chronic Care Visit",
       estimatedDurationMins: 30,
-      pcp: "Dr. Patel",
+      pcp: "Dr. Ellis",
       navigator: "Anna",
       missingFormNames: missingLinda,
       ...intakeBundleProgressFromMissing(missingLinda),
@@ -969,8 +998,8 @@ export function buildSeedAppointments(): Appointment[] {
       reason: "Medicare Annual Wellness",
       appointmentType: "Wellness Visit",
       estimatedDurationMins: 45,
-      pcp: "Dr. Nguyen",
-      navigator: "Riley",
+      pcp: "Dr. Aris",
+      navigator: "Anna",
       missingFormNames: missingJames,
       ...intakeBundleProgressFromMissing(missingJames),
       intakeFormResults: [],
@@ -1010,6 +1039,7 @@ export function buildSeedAppointments(): Appointment[] {
       );
 
   const seeds = [...triDay, ...todaySeeds, ...weekCluster];
+  assertNavigatorPcpLimits(seeds);
   assertUniquePatientPerDay(seeds);
 
   return seeds.map((a) => ({

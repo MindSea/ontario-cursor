@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format, parse } from "date-fns";
 import { ChevronLeft } from "lucide-react";
 
@@ -14,6 +14,7 @@ import { RoomingSection } from "@/app/clinic-flow/rooming-section";
 import { VisitSection } from "@/app/clinic-flow/visit-section";
 import { WorkspaceHuddleCard } from "@/app/clinic-flow/workspace-huddle-card";
 import { WrapUpSection } from "@/app/clinic-flow/wrap-up-section";
+import { WorkspaceSectionsProvider } from "@/app/clinic-flow/workspace-section-collapse-context";
 import {
   ROOM_NONE,
   WORKSPACE_ROOM_OPTIONS_CONCRETE,
@@ -273,6 +274,8 @@ function AppointmentDetail({
   onMobileBack,
   onUpdateAppointment,
 }: AppointmentDetailProps) {
+  const workspaceScrollRef = useRef<HTMLDivElement>(null);
+
   if (!appointment) {
     return (
       <div className="flex flex-1 items-center justify-center px-3 py-12 text-center text-muted-foreground md:px-4">
@@ -342,7 +345,7 @@ function AppointmentDetail({
      * is also keyed) — required because WorkspaceHuddleCard reads from
      * the ambient-listen context. Resetting per visit keeps the demo
      * controls fresh for each appointment. */
-    <AmbientListenProvider>
+    <AmbientListenProvider key={appointment.id}>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
         {/* Pinned 2-row header (same layout on mobile + desktop).
          *
@@ -443,9 +446,18 @@ function AppointmentDetail({
         {/* Scrolling sections body. Matches the workspace's `max-w-6xl
          * + px-8` body so the section cards have the same widths as
          * /clinic-flow. */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div
+          ref={workspaceScrollRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        >
           <div className="mx-auto w-full max-w-6xl px-3 py-4 md:px-8 md:py-6">
-            <div className="flex flex-col gap-4 md:gap-6">{sections}</div>
+            <WorkspaceSectionsProvider
+              appointmentId={appointment.id}
+              stage={appointment.stage}
+              scrollContainerRef={workspaceScrollRef}
+            >
+              <div className="flex flex-col gap-4 md:gap-6">{sections}</div>
+            </WorkspaceSectionsProvider>
           </div>
         </div>
       </div>

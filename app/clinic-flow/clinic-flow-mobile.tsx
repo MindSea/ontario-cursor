@@ -26,6 +26,8 @@ import { VisitSection } from "./visit-section";
 import { PrevisitSection } from "./previsit-section";
 import { WorkspaceHuddleCard } from "./workspace-huddle-card";
 import { WorkspacePinnedHeader } from "./workspace-pinned-header";
+import { HuddleHeaderButton } from "./huddle-header-button";
+import { WorkspaceSectionsProvider } from "./workspace-section-collapse-context";
 import {
   ScheduleViewToggle,
   type ScheduleViewMode,
@@ -63,6 +65,7 @@ export type ClinicFlowMobileProps = {
   filteredMatchDayOptions: readonly FilteredMatchDayOption[];
   onSelectFilteredCalendarDay: (dateKey: string) => void;
   onOpenPatientProfile?: (patientId: string) => void;
+  huddleButton?: { onClick: () => void } | null;
   /** Merged onto the root wrapper (shell visibility from `page.tsx` + `useClinicFlowShellLayout`). */
   className?: string;
 };
@@ -92,6 +95,7 @@ export function ClinicFlowMobile({
   filteredMatchDayOptions,
   onSelectFilteredCalendarDay,
   onOpenPatientProfile,
+  huddleButton,
   className,
 }: ClinicFlowMobileProps) {
   /**
@@ -109,6 +113,7 @@ export function ClinicFlowMobile({
   /** When true, the row is too narrow for sidebar + title + fixed search + X; hide chrome so search fills the row. */
   const [searchTakeover, setSearchTakeover] = useState(false);
   const headerBarRef = useRef<HTMLDivElement>(null);
+  const workspaceScrollRef = useRef<HTMLDivElement>(null);
   const searchIdPrefix = useId();
   /* `SchedulePatientSearch` builds its `<input>` id as
    * `${idPrefix}-patient-search` — mirror that here so the focus
@@ -233,6 +238,12 @@ export function ClinicFlowMobile({
                 <h1 className="min-w-0 flex-1 truncate text-lg font-semibold leading-tight tracking-tight">
                   {CLINIC_FLOW_PAGE_TITLE}
                 </h1>
+                {huddleButton ? (
+                  <HuddleHeaderButton
+                    onClick={huddleButton.onClick}
+                    className="shrink-0"
+                  />
+                ) : null}
                 <Button
                   type="button"
                   variant="ghost"
@@ -350,13 +361,19 @@ export function ClinicFlowMobile({
             </div>
           </TabsContent>
           <TabsContent
+            ref={workspaceScrollRef}
             value="workspace"
+            data-workspace-scroll-container
             aria-label="Workspace"
             className={MOBILE_TAB_PANEL_SCROLL_CLASS}
           >
             {selectedAppointment ? (
               <AmbientListenProvider key={selectedAppointment.id}>
-                <>
+                <WorkspaceSectionsProvider
+                  appointmentId={selectedAppointment.id}
+                  stage={selectedAppointment.stage}
+                  scrollContainerRef={workspaceScrollRef}
+                >
                   {/* Side gutters, air below sticky patient header, bottom margin above browser chrome. */}
                   <div className="mb-32 flex w-full flex-col gap-4 px-3 pt-4 md:px-4">
                     <WorkspaceHuddleCard
@@ -405,7 +422,7 @@ export function ClinicFlowMobile({
                     className="h-[50vh] w-full shrink-0"
                     aria-hidden="true"
                   />
-                </>
+                </WorkspaceSectionsProvider>
               </AmbientListenProvider>
             ) : (
               <p className={cn("px-3 pb-8 md:px-4", textMeta)}>

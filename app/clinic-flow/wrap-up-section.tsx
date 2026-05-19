@@ -25,6 +25,7 @@ import {
 import { ChecklistLabelActionRow } from "./checklist-label-action-row";
 import { CHECKLIST_META_WHEN_ROW_DONE } from "./checklist-workspace-styles";
 import type { Appointment } from "./types";
+import { useWorkspaceSection } from "./workspace-section-collapse-context";
 
 const WRAP_UP_CHECKBOX_TOTAL = 3;
 
@@ -73,7 +74,12 @@ export function WrapUpSection({
   const [wipeTabletDone, setWipeTabletDone] = useState(false);
   const [deleteHistoryDone, setDeleteHistoryDone] = useState(false);
 
-  const [wrapCollapsed, setWrapCollapsed] = useState(false);
+  const {
+    collapsed: wrapCollapsed,
+    toggleCollapsed: toggleWrapCollapsed,
+    scrollId,
+    sectionSurfaceClass,
+  } = useWorkspaceSection("wrap-up");
   const [wrapUncheckOpen, setWrapUncheckOpen] = useState(false);
 
   useEffect(() => {
@@ -86,7 +92,6 @@ export function WrapUpSection({
       setStopAmbientDone(false);
       setWipeTabletDone(false);
       setDeleteHistoryDone(false);
-      setWrapCollapsed(false);
       setWrapUncheckOpen(false);
     });
   }, [appointment.id]);
@@ -118,7 +123,8 @@ export function WrapUpSection({
   return (
     <div className="min-w-0 w-full">
       <section
-        className={cn(textBody, sectionClass)}
+        id={scrollId}
+        className={cn(textBody, sectionClass, sectionSurfaceClass)}
         aria-labelledby={`${baseId}-title`}
       >
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -158,7 +164,7 @@ export function WrapUpSection({
               aria-label={
                 wrapCollapsed ? "Expand Wrap Up section" : "Collapse Wrap Up section"
               }
-              onClick={() => setWrapCollapsed((c) => !c)}
+              onClick={toggleWrapCollapsed}
             >
               {wrapCollapsed ? (
                 <ChevronDown className="size-4" aria-hidden />

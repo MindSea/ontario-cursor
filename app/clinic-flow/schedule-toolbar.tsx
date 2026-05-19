@@ -121,7 +121,7 @@ export function ScheduleToolbar({
   const isPanel = layout === "panel";
   const panelWide = useSchedulePanelInlineWide();
   /** Wide panel: optional collapse mirrors narrow icon row + sheets (`md+`). */
-  const [panelWideCollapsed, setPanelWideCollapsed] = useState(false);
+  const [panelWideCollapsed, setPanelWideCollapsed] = useState(true);
   /** Full-width patient search in mobile chrome and panel (any width). */
   const searchFieldContainerFullWidth = isMobileChrome || isPanel;
   const [openFilterMenu, setOpenFilterMenu] = useState<FilterMenuId | null>(

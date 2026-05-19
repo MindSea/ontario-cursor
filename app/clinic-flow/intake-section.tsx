@@ -27,6 +27,7 @@ import type {
   IntakeFormResultRow,
   IntakeFormResultSeverity,
 } from "./types";
+import { useWorkspaceSection } from "./workspace-section-collapse-context";
 
 /** Interactive checklist rows (checkboxes only). */
 const INTAKE_CHECKBOX_TOTAL = 6;
@@ -122,7 +123,12 @@ export function IntakeSection({
   const [resultsReviewedChecked, setResultsReviewedChecked] = useState(false);
   const [resultsExpanded, setResultsExpanded] = useState(false);
   const [escortedChecked, setEscortedChecked] = useState(false);
-  const [intakeCollapsed, setIntakeCollapsed] = useState(false);
+  const {
+    collapsed: intakeCollapsed,
+    toggleCollapsed: toggleIntakeCollapsed,
+    scrollId,
+    sectionSurfaceClass,
+  } = useWorkspaceSection("intake");
   const [intakeUncheckOpen, setIntakeUncheckOpen] = useState(false);
 
   const resultsPanelId = `${baseId}-intake-results-panel`;
@@ -209,7 +215,11 @@ export function IntakeSection({
   );
 
   return (
-    <section className={cn(textBody, sectionClass)} aria-labelledby={`${baseId}-title`}>
+    <section
+      id={scrollId}
+      className={cn(textBody, sectionClass, sectionSurfaceClass)}
+      aria-labelledby={`${baseId}-title`}
+    >
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h3
           id={`${baseId}-title`}
@@ -249,7 +259,7 @@ export function IntakeSection({
                 ? "Expand Intake section"
                 : "Collapse Intake section"
             }
-            onClick={() => setIntakeCollapsed((c) => !c)}
+            onClick={toggleIntakeCollapsed}
           >
             {intakeCollapsed ? (
               <ChevronDown className="size-4" aria-hidden />

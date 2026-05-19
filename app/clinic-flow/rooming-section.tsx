@@ -35,6 +35,7 @@ import { ChecklistLabelActionRow } from "./checklist-label-action-row";
 import { CHECKLIST_META_WHEN_ROW_DONE } from "./checklist-workspace-styles";
 import { getRoomingPoctDefinition } from "./rooming-poct-catalog";
 import type { Appointment } from "./types";
+import { useWorkspaceSection } from "./workspace-section-collapse-context";
 
 const ROOMING_CHECKBOX_TOTAL = 7;
 
@@ -135,7 +136,12 @@ export function RoomingSection({
   const [callPcpDone, setCallPcpDone] = useState(false);
   const [careMgmtDone, setCareMgmtDone] = useState(false);
 
-  const [roomingCollapsed, setRoomingCollapsed] = useState(false);
+  const {
+    collapsed: roomingCollapsed,
+    toggleCollapsed: toggleRoomingCollapsed,
+    scrollId,
+    sectionSurfaceClass,
+  } = useWorkspaceSection("rooming");
   const [roomingUncheckOpen, setRoomingUncheckOpen] = useState(false);
 
   const orderedPoctTests = appointment.rooming.orderedPoctTests;
@@ -200,7 +206,6 @@ export function RoomingSection({
       setMedRecNotes("");
       setCallPcpDone(false);
       setCareMgmtDone(false);
-      setRoomingCollapsed(false);
       setRoomingUncheckOpen(false);
     });
   }, [appointment.id]);
@@ -280,7 +285,11 @@ export function RoomingSection({
   const reg = appointment.rooming.registration;
 
   return (
-    <section className={cn(textBody, sectionClass)} aria-labelledby={`${baseId}-title`}>
+    <section
+      id={scrollId}
+      className={cn(textBody, sectionClass, sectionSurfaceClass)}
+      aria-labelledby={`${baseId}-title`}
+    >
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h3
           id={`${baseId}-title`}
@@ -318,7 +327,7 @@ export function RoomingSection({
             aria-label={
               roomingCollapsed ? "Expand Rooming section" : "Collapse Rooming section"
             }
-            onClick={() => setRoomingCollapsed((c) => !c)}
+            onClick={toggleRoomingCollapsed}
           >
             {roomingCollapsed ? (
               <ChevronDown className="size-4" aria-hidden />

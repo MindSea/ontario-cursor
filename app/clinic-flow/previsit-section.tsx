@@ -22,6 +22,7 @@ import { ChecklistLabelActionRow } from "./checklist-label-action-row";
 import { CHECKLIST_META_WHEN_ROW_DONE } from "./checklist-workspace-styles";
 import { MutedTagBadge } from "./muted-tag-badge";
 import type { Appointment } from "./types";
+import { useWorkspaceSection } from "./workspace-section-collapse-context";
 
 type TransportStatus =
   | "Not Requested"
@@ -146,7 +147,12 @@ export function PrevisitSection({
 
   const [item5Checked, setItem5Checked] = useState(false);
   const [medNotes, setMedNotes] = useState("");
-  const [previsitCollapsed, setPrevisitCollapsed] = useState(false);
+  const {
+    collapsed: previsitCollapsed,
+    toggleCollapsed: togglePrevisitCollapsed,
+    scrollId,
+    sectionSurfaceClass,
+  } = useWorkspaceSection("previsit");
   const [previsitUncheckOpen, setPrevisitUncheckOpen] = useState(false);
 
   const allFormsComplete = appointment.missingFormNames.length === 0;
@@ -222,7 +228,8 @@ export function PrevisitSection({
   return (
     <div className="min-w-0 w-full">
       <section
-        className={cn(textBody, sectionClass)}
+        id={scrollId}
+        className={cn(textBody, sectionClass, sectionSurfaceClass)}
         aria-labelledby={`${baseId}-title`}
       >
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -266,7 +273,7 @@ export function PrevisitSection({
                   ? "Expand Previsit section"
                   : "Collapse Previsit section"
               }
-              onClick={() => setPrevisitCollapsed((c) => !c)}
+              onClick={togglePrevisitCollapsed}
             >
               {previsitCollapsed ? (
                 <ChevronDown className="size-4" aria-hidden />

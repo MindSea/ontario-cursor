@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { textBody, textMeta } from "@/lib/typography";
@@ -19,6 +21,8 @@ import { LabsSection } from "./labs-section";
 import { VisitSection } from "./visit-section";
 import { WorkspaceHuddleCard } from "./workspace-huddle-card";
 import { WorkspacePinnedHeader } from "./workspace-pinned-header";
+import { HuddleHeaderButton } from "./huddle-header-button";
+import { WorkspaceSectionsProvider } from "./workspace-section-collapse-context";
 import { DayAgendaList } from "./day-agenda-list";
 import type { FilteredMatchDayOption } from "./schedule-date-row";
 import { ScheduleDateRow } from "./schedule-date-row";
@@ -46,6 +50,7 @@ export type ClinicFlowDesktopProps = {
   filteredMatchDayOptions: readonly FilteredMatchDayOption[];
   onSelectFilteredCalendarDay: (dateKey: string) => void;
   onOpenPatientProfile?: (patientId: string) => void;
+  huddleButton?: { onClick: () => void } | null;
   /** Merged onto the root wrapper (shell visibility from `page.tsx` + `useClinicFlowShellLayout`). */
   className?: string;
 };
@@ -67,8 +72,11 @@ export function ClinicFlowDesktop({
   filteredMatchDayOptions,
   onSelectFilteredCalendarDay,
   onOpenPatientProfile,
+  huddleButton,
   className,
 }: ClinicFlowDesktopProps) {
+  const workspaceScrollRef = useRef<HTMLDivElement>(null);
+
   return (
     <div
       className={cn(
@@ -107,6 +115,9 @@ export function ClinicFlowDesktop({
             size="compact"
             className="min-w-0 w-[min(100%,16rem)] max-w-md shrink-0 md:w-64"
           />
+          {huddleButton ? (
+            <HuddleHeaderButton onClick={huddleButton.onClick} />
+          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -205,10 +216,17 @@ export function ClinicFlowDesktop({
                   className="shrink-0"
                 />
                 <div
+                  ref={workspaceScrollRef}
+                  data-workspace-scroll-container
                   className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-background pb-4"
                   aria-label="Workspace"
                 >
-                  <div className="mx-auto w-full max-w-6xl min-w-0 px-8">
+                  <WorkspaceSectionsProvider
+                    appointmentId={selectedAppointment.id}
+                    stage={selectedAppointment.stage}
+                    scrollContainerRef={workspaceScrollRef}
+                  >
+                    <div className="mx-auto w-full max-w-6xl min-w-0 px-8">
                     <div className="h-[280px] md:hidden" aria-hidden />
                     <div className="hidden h-6 md:block" aria-hidden />
                     <div className="hidden md:flex md:flex-col md:gap-6">
@@ -254,6 +272,7 @@ export function ClinicFlowDesktop({
                       />
                     </div>
                   </div>
+                  </WorkspaceSectionsProvider>
                 </div>
               </div>
             </AmbientListenProvider>
