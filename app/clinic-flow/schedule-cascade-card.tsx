@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FocusEvent } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 
 import { BookingWeekVisitTile } from "@/app/booking/booking-week-visit-tile";
@@ -12,8 +12,14 @@ import type { ScheduleLaneCascadePlacement } from "./schedule-bundle-layout";
 const CASCADE_Z_BASE = 10;
 const CASCADE_Z_RAISED = 100;
 
+const SLOT_HEIGHT_FALLBACK = "3.5rem";
+
+function slotCssVarExpr(slotCssVar: string): string {
+  return `var(${slotCssVar}, ${SLOT_HEIGHT_FALLBACK})`;
+}
+
 function slotHeightCalc(spanSlots: number, slotCssVar: string): string {
-  return `calc(${spanSlots} * var(${slotCssVar}) - 4px)`;
+  return `calc(${spanSlots} * ${slotCssVarExpr(slotCssVar)} - 4px)`;
 }
 
 export function cascadeStackZIndex(raised: boolean): number {
@@ -56,7 +62,7 @@ export function cascadeEqualColumnPositionStyle({
   const index = sameStartColumnIndex;
 
   return {
-    top: `calc(${block.startSlot} * var(${slotCssVar}) + 2px)`,
+    top: `calc(${block.startSlot} * ${slotCssVarExpr(slotCssVar)} + 2px)`,
     height: slotHeightCalc(spanSlots, slotCssVar),
     left: `calc(100% / ${count} * ${index})`,
     width: `calc(100% / ${count})`,
@@ -84,7 +90,7 @@ export function cascadeLanePositionStyle({
   const index = Math.min(columnIndex, count - 1);
 
   return {
-    top: `calc(${block.startSlot} * var(${slotCssVar}) + 2px)`,
+    top: `calc(${block.startSlot} * ${slotCssVarExpr(slotCssVar)} + 2px)`,
     height: slotHeightCalc(spanSlots, slotCssVar),
     left: `calc(100% / ${count} * ${index})`,
     width: `calc(100% / ${count})`,
@@ -161,13 +167,13 @@ export function ScheduleCascadeCard({
   slotCssVar: string;
   className?: string;
 }) {
-  const [interactionRaised, setInteractionRaised] = useState(false);
+  const [hoverRaised, setHoverRaised] = useState(false);
   const [canHover, setCanHover] = useState(false);
 
   const placement = segments[0]!;
   const appointment = placement.block.appointment;
   const isSelected = appointment.id === selectedId;
-  const raised = interactionRaised || isSelected;
+  const raised = isSelected || (canHover && hoverRaised);
   const spanSlots = segmentSpanSlots(placement);
   const positionStyle = cascadeSegmentPositionStyle({
     ...placement,
@@ -184,31 +190,17 @@ export function ScheduleCascadeCard({
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  const bindInteraction = {
-    onMouseEnter: () => {
-      if (canHover) setInteractionRaised(true);
-    },
-    onMouseLeave: () => {
-      if (canHover) setInteractionRaised(false);
-    },
-    onPointerDown: () => setInteractionRaised(true),
-    onFocusCapture: () => setInteractionRaised(true),
-    onBlurCapture: (e: FocusEvent<HTMLElement>) => {
-      if (!e.currentTarget.contains(e.relatedTarget)) {
-        setInteractionRaised(false);
-      }
-    },
-  };
-
   return (
     <div
-      className={cn(
-        "appointment-card absolute min-h-7 touch-manipulation",
-        className,
-      )}
+      className={cn("appointment-card group/card absolute min-h-7", className)}
       style={positionStyle}
       data-appointment-id={appointment.id}
-      {...bindInteraction}
+      onMouseEnter={() => {
+        if (canHover) setHoverRaised(true);
+      }}
+      onMouseLeave={() => {
+        if (canHover) setHoverRaised(false);
+      }}
     >
       <BookingWeekVisitTile
         variant="cascade"

@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import type { Appointment } from "@/app/clinic-flow/types";
 import { FilteredResultsEmptyState } from "@/components/filtered-results-empty-state";
 
-import { BookingDayScheduleGrid } from "./booking-day-schedule-grid";
+import { BookingCalendarDayViewport } from "./booking-calendar-viewport";
 
 export function BookingDayView({
   anchor,
@@ -33,21 +33,23 @@ export function BookingDayView({
 
   if (dayAppointments.length === 0) {
     return (
-      <FilteredResultsEmptyState
-        entity="appointments"
-        hasSearch={hasSearch}
-        hasToolbarFilters={hasToolbarFilters}
-        locationPhrase="on this day"
-        onClearSearch={onClearSearch}
-        onClearFilters={onClearFilters}
-        align="center"
-        className="items-center py-6 text-center [&>div:last-child]:justify-center"
-      />
+      <div className="flex min-h-0 flex-1 items-center justify-center p-4">
+        <FilteredResultsEmptyState
+          entity="appointments"
+          hasSearch={hasSearch}
+          hasToolbarFilters={hasToolbarFilters}
+          locationPhrase="on this day"
+          onClearSearch={onClearSearch}
+          onClearFilters={onClearFilters}
+          align="center"
+          className="items-center py-6 text-center [&>div:last-child]:justify-center"
+        />
+      </div>
     );
   }
 
   return (
-    <BookingDayScheduleGrid
+    <BookingCalendarDayViewport
       appointments={dayAppointments}
       onSelectAppointment={onSelectAppointment}
     />

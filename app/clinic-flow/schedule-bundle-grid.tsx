@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 
-import { buildAppointmentBlocks } from "./day-schedule-grid";
+import { buildAppointmentBlocks, SLOT_COUNT } from "./day-schedule-grid";
 import {
   layoutScheduleLaneCascade,
   type ScheduleCalendarLayoutMode,
@@ -58,8 +58,13 @@ export function ScheduleBundleGrid({
     [placements],
   );
 
+  const gridHeight = `calc(var(${slotCssVar}, 3.5rem) * ${SLOT_COUNT})`;
+
   return (
-    <>
+    <div
+      className="relative w-full"
+      style={{ height: gridHeight, minHeight: gridHeight }}
+    >
       {cards.map((segments) => (
         <ScheduleCascadeCard
           key={segments[0]!.block.appointment.id}
@@ -69,6 +74,6 @@ export function ScheduleBundleGrid({
           slotCssVar={slotCssVar}
         />
       ))}
-    </>
+    </div>
   );
 }

@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <SidebarInset
         className={cn(
-          "flex flex-1 flex-col font-sans max-md:overflow-visible",
+          "flex min-w-0 flex-1 flex-col overflow-x-hidden font-sans max-md:overflow-y-visible",
           fullBleedAppRoute
             ? "min-h-0 max-md:min-h-svh md:h-svh md:max-h-svh"
             : "min-h-svh",
@@ -48,8 +48,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
         <div
           className={cn(
-            "flex min-h-0 flex-1 flex-col overflow-visible max-md:min-h-min max-md:flex-none max-md:overflow-visible",
-            fullBleedAppRoute && "md:overflow-hidden",
+            "flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden max-md:min-h-min max-md:flex-none max-md:overflow-y-visible",
+            fullBleedAppRoute && "md:overflow-y-hidden",
           )}
         >
           {children}

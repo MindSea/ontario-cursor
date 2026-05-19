@@ -1,5 +1,7 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 import {
   DAY_GRID_START_MIN,
   formatAxisSlotTime,
@@ -16,23 +18,47 @@ import { cn } from "@/lib/utils";
 export const BOOKING_SLOT_HEIGHT_VAR = "--bk-slot";
 export const BOOKING_SLOT_HEIGHT = "3.5rem";
 
+/** Matches {@link BookingWeekDayHeader} (py-1.5 + two lines). */
+export const BOOKING_WEEK_HEADER_ROW_HEIGHT = "3.25rem";
+
 export type BookingScheduleViewMode = "day" | "week";
+
+export function bookingScheduleGridHeight(slotCssVar: string): string {
+  return `calc(var(${slotCssVar}, ${BOOKING_SLOT_HEIGHT}) * ${SLOT_COUNT})`;
+}
+
+export function bookingScheduleWeekGridTemplateRows(
+  slotCssVar: string = BOOKING_SLOT_HEIGHT_VAR,
+): string {
+  return `${BOOKING_WEEK_HEADER_ROW_HEIGHT} ${bookingScheduleGridHeight(slotCssVar)}`;
+}
 
 function layoutModeForBookingView(
   viewMode: BookingScheduleViewMode,
   isMobile: boolean,
 ): ScheduleCalendarLayoutMode {
   if (viewMode === "week") return "week";
-  return isMobile ? "day-compact" : "day-wide";
+  return isMobile ? "day-narrow" : "day-wide";
 }
 
-export function BookingScheduleTimeAxis({ className }: { className?: string }) {
+export function BookingScheduleTimeAxis({
+  className,
+  fillGridCell = false,
+  style,
+}: {
+  className?: string;
+  /** Fill a week-view grid row (same height as day columns). */
+  fillGridCell?: boolean;
+  style?: CSSProperties;
+}) {
   return (
     <div
       className={cn(
-        "flex w-14 shrink-0 flex-col border-r border-border/20",
+        "flex flex-col border-r border-border/20 bg-background",
+        fillGridCell ? "h-full min-h-0 w-full" : "w-14 shrink-0",
         className,
       )}
+      style={style}
     >
       {Array.from({ length: SLOT_COUNT }, (_, slotIndex) => {
         const slotStartMin = DAY_GRID_START_MIN + slotIndex * SLOT_MINUTES;
@@ -78,11 +104,18 @@ export function BookingScheduleDayColumn({
 }) {
   const isMobile = useIsMobile();
   const layoutMode = layoutModeForBookingView(viewMode, isMobile);
+  const gridHeight = bookingScheduleGridHeight(BOOKING_SLOT_HEIGHT_VAR);
 
   return (
     <div
-      className={cn("relative min-h-0 min-w-0 flex-1", className)}
-      style={{ minHeight: `calc(var(${BOOKING_SLOT_HEIGHT_VAR}) * ${SLOT_COUNT})` }}
+      className={cn("relative isolate h-full w-full min-w-0", className)}
+      style={
+        {
+          [BOOKING_SLOT_HEIGHT_VAR]: BOOKING_SLOT_HEIGHT,
+          height: gridHeight,
+          minHeight: gridHeight,
+        } as CSSProperties
+      }
       role="presentation"
     >
       <div
@@ -103,7 +136,7 @@ export function BookingScheduleDayColumn({
         })}
       </div>
 
-      <div className="absolute inset-y-0 left-0.5 right-0.5 overflow-hidden">
+      <div className="relative h-full w-full overflow-hidden px-0.5">
         <ScheduleBundleGrid
           appointments={appointments}
           layoutMode={layoutMode}
@@ -130,25 +163,29 @@ export function BookingDayScheduleGrid({
   showTimeAxis?: boolean;
   className?: string;
 }) {
+  const gridHeight = bookingScheduleGridHeight(BOOKING_SLOT_HEIGHT_VAR);
+
   return (
     <div
-      className={cn("w-full min-w-0", className)}
-      style={{ [BOOKING_SLOT_HEIGHT_VAR as string]: BOOKING_SLOT_HEIGHT }}
+      className={cn("w-full min-w-0 max-w-full overflow-x-hidden", className)}
+      style={
+        { [BOOKING_SLOT_HEIGHT_VAR]: BOOKING_SLOT_HEIGHT } as CSSProperties
+      }
     >
       <div
-        className="flex min-h-0 w-full flex-row"
-        style={{
-          minHeight: `calc(var(${BOOKING_SLOT_HEIGHT_VAR}) * ${SLOT_COUNT})`,
-        }}
+        className="flex w-full min-w-0 max-w-full flex-row"
+        style={{ minHeight: gridHeight, height: gridHeight }}
         role="grid"
         aria-label="Day schedule, 15-minute intervals"
       >
         {showTimeAxis ? <BookingScheduleTimeAxis /> : null}
-        <BookingScheduleDayColumn
-          appointments={appointments}
-          onSelectAppointment={onSelectAppointment}
-          viewMode="day"
-        />
+        <div className="relative min-h-0 min-w-0 flex-1 basis-0">
+          <BookingScheduleDayColumn
+            appointments={appointments}
+            onSelectAppointment={onSelectAppointment}
+            viewMode="day"
+          />
+        </div>
       </div>
     </div>
   );

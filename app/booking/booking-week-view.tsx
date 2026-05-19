@@ -1,110 +1,89 @@
 "use client";
 
-import { useMemo } from "react";
-import { addDays, format, isSameDay, startOfDay, startOfWeek } from "date-fns";
+import { useMemo, type CSSProperties } from "react";
+import { addDays, format, startOfDay, startOfWeek } from "date-fns";
 
-import type { Appointment } from "@/app/clinic-flow/types";
 import { textBody, textCaption } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
-import {
-  BOOKING_SLOT_HEIGHT,
-  BOOKING_SLOT_HEIGHT_VAR,
-  BookingScheduleDayColumn,
-  BookingScheduleTimeAxis,
-} from "./booking-day-schedule-grid";
+/** Minimum day column width when the week strip scrolls horizontally (below md). */
+export const WEEK_DAY_COLUMN_MIN_NARROW = "5.5rem";
 
-export function BookingWeekView({
-  anchor,
-  appointments,
-  onSelectAppointment,
+/** Corner cell aligned with day headers (same padding / line boxes). */
+export function BookingWeekGutterCorner({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      className={cn(
+        "box-border min-w-0 border-r border-border/20 bg-background px-1 py-1",
+        className,
+      )}
+      style={style}
+      aria-hidden
+    >
+      <span
+        className={cn(
+          "invisible block uppercase tracking-wide",
+          textCaption,
+        )}
+      >
+        Sun
+      </span>
+      <span className={cn("invisible font-semibold", textBody)}>May 00</span>
+    </div>
+  );
+}
+
+export function BookingWeekDayHeader({
+  day,
+  isToday,
   onSelectDay,
 }: {
-  anchor: Date;
-  appointments: readonly Appointment[];
-  onSelectAppointment: (apt: Appointment) => void;
+  day: Date;
+  isToday: boolean;
   onSelectDay: (date: Date) => void;
 }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelectDay(day)}
+      className={cn(
+        "box-border flex h-full min-h-0 min-w-0 flex-col justify-center border-l border-border/20 px-0.5 py-1 text-center leading-tight hover:bg-muted/40",
+        isToday && "bg-primary/5",
+      )}
+    >
+      <span
+        className={cn(
+          "block uppercase tracking-wide text-muted-foreground",
+          textCaption,
+        )}
+      >
+        {format(day, "EEE")}
+      </span>
+      <span
+        className={cn(
+          "font-semibold",
+          textBody,
+          isToday ? "text-primary" : "text-foreground",
+        )}
+      >
+        {format(day, "MMM d")}
+      </span>
+    </button>
+  );
+}
+
+export function useBookingWeekDays(anchor: Date) {
   const today = useMemo(() => startOfDay(new Date()), []);
   const weekStart = startOfWeek(anchor, { weekStartsOn: 0 });
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart],
   );
-
-  const byDate = useMemo(() => {
-    const map = new Map<string, Appointment[]>();
-    for (const apt of appointments) {
-      const list = map.get(apt.date) ?? [];
-      list.push(apt);
-      map.set(apt.date, list);
-    }
-    return map;
-  }, [appointments]);
-
-  return (
-    <div
-      className="overflow-x-auto overscroll-x-contain"
-      style={{ [BOOKING_SLOT_HEIGHT_VAR as string]: BOOKING_SLOT_HEIGHT }}
-    >
-      <div className="min-w-[52rem]">
-        <div className="mb-0 grid grid-cols-[3.5rem_repeat(7,minmax(6.5rem,1fr))]">
-          <div className="border-b border-border/40" aria-hidden />
-          {days.map((day) => {
-            const key = format(day, "yyyy-MM-dd");
-            const isToday = isSameDay(day, today);
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => onSelectDay(day)}
-                className={cn(
-                  "border-b border-border/40 px-1 py-1.5 text-center hover:bg-muted/40",
-                  isToday && "bg-primary/5",
-                )}
-              >
-                <span
-                  className={cn(
-                    "block uppercase tracking-wide text-muted-foreground",
-                    textCaption,
-                  )}
-                >
-                  {format(day, "EEE")}
-                </span>
-                <span
-                  className={cn(
-                    "font-semibold",
-                    textBody,
-                    isToday ? "text-primary" : "text-foreground",
-                  )}
-                >
-                  {format(day, "MMM d")}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex min-h-0 w-full flex-row">
-          <BookingScheduleTimeAxis />
-          {days.map((day) => {
-            const key = format(day, "yyyy-MM-dd");
-            const list = byDate.get(key) ?? [];
-            return (
-              <div
-                key={key}
-                className="min-w-0 flex-1 overflow-hidden border-l border-border/20"
-              >
-                <BookingScheduleDayColumn
-                  appointments={list}
-                  onSelectAppointment={onSelectAppointment}
-                  viewMode="week"
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
+  return { days, today };
 }

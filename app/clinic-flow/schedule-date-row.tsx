@@ -49,12 +49,15 @@ export function ScheduleDateRow({
   centerLabel,
   prevPeriodAriaLabel = "Previous day",
   nextPeriodAriaLabel = "Next day",
+  pinSticky = true,
 }: {
   selectedDate: Date;
   onShiftDay: (deltaDays: number) => void;
   onGoToday: () => void;
   fullBleed?: boolean;
   className?: string;
+  /** When false, parent supplies sticky positioning (e.g. Booking stacked chrome). */
+  pinSticky?: boolean;
   /** Sorted days that have ≥1 appointment matching toolbar filters, with counts. */
   filteredMatchDayOptions?: readonly FilteredMatchDayOption[];
   onSelectFilteredCalendarDay?: (dateKey: string) => void;
@@ -206,7 +209,8 @@ export function ScheduleDateRow({
     <>
       <div
         className={cn(
-          "sticky top-0 z-10 m-0 grid w-full shrink-0 grid-cols-3 items-center border-b border-border/40 bg-background",
+          "m-0 grid w-full shrink-0 grid-cols-3 items-center bg-background",
+          pinSticky && "sticky top-0 z-10 border-b border-border/40",
           fullBleed ? "min-h-10 px-1 py-1.5" : "min-h-11 px-2 py-2",
           className,
         )}

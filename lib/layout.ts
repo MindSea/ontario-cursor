@@ -16,8 +16,9 @@ export const panelTaskListColumnClass = `mx-auto w-full min-w-0 ${panelTaskListM
  * gutter so filtering/search does not shift content when overflow toggles.
  */
 export const fullBleedPageRootClass = cn(
-  "flex min-h-0 flex-1 flex-col bg-background text-foreground",
-  "max-md:fixed max-md:inset-0 max-md:z-0 max-md:h-dvh max-md:max-h-dvh max-md:overflow-y-auto max-md:overscroll-y-auto",
-  "md:static md:z-auto md:h-full md:overflow-y-auto md:overscroll-y-auto",
+  "flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col bg-background text-foreground",
+  "max-md:fixed max-md:inset-0 max-md:z-0 max-md:h-dvh max-md:max-h-dvh",
+  "max-md:overflow-x-hidden max-md:overflow-y-auto max-md:overscroll-y-auto",
+  "md:static md:z-auto md:h-full md:overflow-x-hidden md:overflow-y-auto md:overscroll-y-auto",
   "[scrollbar-gutter:stable]",
 );

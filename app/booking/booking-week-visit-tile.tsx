@@ -43,13 +43,13 @@ export function BookingWeekVisitTile({
           ? "relative h-full w-full rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"
           : isCascade
             ? cn(
-                "absolute size-full min-h-7 rounded-md border border-border/80 bg-background shadow-sm",
+                "absolute inset-0 min-h-7 rounded-md border border-border/80 bg-background shadow-sm",
                 "transition-[background-color,border-color,box-shadow] duration-100 ease-out",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35",
-                "hover:border-border hover:bg-muted hover:shadow-md hover:ring-1 hover:ring-border/90",
-                "focus-visible:border-border focus-visible:bg-muted focus-visible:shadow-md",
+                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/35",
+                "hover:border-border hover:bg-muted hover:shadow-sm",
+                "focus-visible:border-border focus-visible:bg-muted",
                 isSelected &&
-                  "border-border bg-muted shadow-lg ring-2 ring-ring/35",
+                  "z-20 border-border bg-muted shadow-md ring-1 ring-inset ring-primary/35",
               )
             : cn(
                 "absolute rounded border",

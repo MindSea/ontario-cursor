@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { parse } from "date-fns";
 import { Plus } from "lucide-react";
 
 import { useAppointmentsStore } from "@/app/clinic-flow/appointments-store";
@@ -28,7 +27,6 @@ import {
 import { ScheduleFilterMultiSelectDropdown } from "@/app/clinic-flow/schedule-filter-multiselect-dropdown";
 import { ScheduleFilterRadioSelectDropdown } from "@/app/clinic-flow/schedule-filter-radio-select-dropdown";
 import { ScheduleDateRow } from "@/app/clinic-flow/schedule-date-row";
-import type { FilteredMatchDayOption } from "@/app/clinic-flow/schedule-date-row";
 import type { Appointment } from "@/app/clinic-flow/types";
 import { PatientProfileDialog } from "@/app/patient-profile/patient-profile-dialog";
 import { usePatientProfileUrlState } from "@/app/patient-profile/use-patient-profile-url-state";
@@ -46,12 +44,22 @@ import {
   shiftBookingAnchor,
   type BookingCalendarView,
 } from "./booking-calendar-utils";
+import {
+  BookingCalendarPanel,
+  BookingCalendarWeekViewport,
+} from "./booking-calendar-viewport";
 import { BookingDayView } from "./booking-day-view";
 import { BookingFilterChips } from "./booking-filter-chips";
 import { BookingFiltersSheet } from "./booking-filters-sheet";
 import { BookingMonthView } from "./booking-month-view";
 import { BookingViewToggle } from "./booking-view-toggle";
-import { BookingWeekView } from "./booking-week-view";
+import {
+  bookingCalendarScrollClass,
+  bookingChromeContentPadClass,
+  bookingChromeDateClass,
+  bookingChromeFiltersClass,
+  bookingChromeViewClass,
+} from "./booking-sticky-stack";
 import { BookingYearView } from "./booking-year-view";
 
 const BOOKING_VIEW_STORAGE_KEY = "booking.calendarView";
@@ -165,16 +173,6 @@ export default function BookingPage() {
     [filteredAppointments, viewStart, viewEnd],
   );
 
-  const filteredMatchDayOptions = useMemo((): FilteredMatchDayOption[] => {
-    const byDate = new Map<string, number>();
-    for (const a of filteredAppointments) {
-      byDate.set(a.date, (byDate.get(a.date) ?? 0) + 1);
-    }
-    return [...byDate.entries()]
-      .map(([dateKey, count]) => ({ dateKey, count }))
-      .sort((x, y) => x.dateKey.localeCompare(y.dateKey));
-  }, [filteredAppointments]);
-
   const hasActiveFilters =
     selectedPcps.length > 0 ||
     selectedNavigators.length > 0 ||
@@ -203,11 +201,6 @@ export default function BookingPage() {
     setDialogOpen(true);
   }, []);
 
-  const selectFilteredDay = useCallback((dateKey: string) => {
-    setAnchor(parse(dateKey, "yyyy-MM-dd", new Date()));
-    setView("day");
-  }, []);
-
   const filterChips = hasActiveFilters ? (
     <BookingFilterChips
       selectedPcps={selectedPcps}
@@ -227,8 +220,13 @@ export default function BookingPage() {
   ) : null;
 
   return (
-    <div className={fullBleedPageRootClass}>
-      <div className="sticky top-0 z-30 shrink-0 border-b border-border/50 bg-background max-md:border-border/60">
+    <div
+      className={cn(
+        fullBleedPageRootClass,
+        "overflow-y-hidden max-md:overflow-y-hidden md:overflow-y-hidden",
+      )}
+    >
+      <div className={bookingChromeFiltersClass}>
         <AppPageHeaderWithSearch
           title="Booking"
           patientSearch={patientSearch}
@@ -302,30 +300,33 @@ export default function BookingPage() {
       </div>
 
       <div
-        className={cn(
-          "w-full min-w-0 flex-1",
-          "max-md:px-3 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-          "md:mx-auto md:max-w-6xl md:px-8 md:pb-4",
-        )}
+        className={bookingChromeViewClass}
       >
-        <div className="max-md:pt-2">
-          <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <BookingViewToggle
-              value={view}
-              onChange={handleViewChange}
-              className="md:max-w-md"
-            />
-            <Button
-              type="button"
-              size="sm"
-              className="shrink-0"
-              onClick={openCreate}
-            >
-              <Plus className="size-4" aria-hidden />
-              New appointment
-            </Button>
-          </div>
+        <div
+          className={cn(
+            bookingChromeContentPadClass,
+            "flex flex-col gap-3 py-3 max-md:pt-2 md:flex-row md:items-center md:justify-between",
+          )}
+        >
+          <BookingViewToggle
+            value={view}
+            onChange={handleViewChange}
+            className="md:max-w-md"
+          />
+          <Button
+            type="button"
+            size="sm"
+            className="shrink-0"
+            onClick={openCreate}
+          >
+            <Plus className="size-4" aria-hidden />
+            New appointment
+          </Button>
+        </div>
+      </div>
 
+      <div className={bookingChromeDateClass}>
+        <div className={bookingChromeContentPadClass}>
           <ScheduleDateRow
             selectedDate={anchor}
             centerLabel={centerLabel}
@@ -335,16 +336,14 @@ export default function BookingPage() {
               setAnchor((d) => shiftBookingAnchor(d, view, delta))
             }
             onGoToday={() => setAnchor(new Date())}
-            filteredMatchDayOptions={
-              view === "day" ? filteredMatchDayOptions : undefined
-            }
-            onSelectFilteredCalendarDay={
-              view === "day" ? selectFilteredDay : undefined
-            }
             fullBleed
-            className="mb-3 rounded-md border border-border/40"
+            pinSticky={false}
           />
+        </div>
+      </div>
 
+      {view === "day" || view === "week" ? (
+        <BookingCalendarPanel>
           {view === "day" ? (
             <BookingDayView
               anchor={anchor}
@@ -355,9 +354,8 @@ export default function BookingPage() {
               onClearSearch={() => setPatientSearch("")}
               onClearFilters={clearAllFilters}
             />
-          ) : null}
-          {view === "week" ? (
-            <BookingWeekView
+          ) : (
+            <BookingCalendarWeekViewport
               anchor={anchor}
               appointments={appointmentsInView}
               onSelectAppointment={openEdit}
@@ -366,29 +364,34 @@ export default function BookingPage() {
                 setView("day");
               }}
             />
-          ) : null}
-          {view === "month" ? (
-            <BookingMonthView
-              anchor={anchor}
-              appointments={appointmentsInView}
-              onSelectDay={(day) => {
-                setAnchor(day);
-                setView("day");
-              }}
-            />
-          ) : null}
-          {view === "year" ? (
-            <BookingYearView
-              anchor={anchor}
-              appointments={filteredAppointments}
-              onSelectMonth={(monthStart) => {
-                setAnchor(monthStart);
-                setView("month");
-              }}
-            />
-          ) : null}
+          )}
+        </BookingCalendarPanel>
+      ) : (
+        <div className={bookingCalendarScrollClass}>
+          <div className={bookingChromeContentPadClass}>
+            {view === "month" ? (
+              <BookingMonthView
+                anchor={anchor}
+                appointments={appointmentsInView}
+                onSelectDay={(day) => {
+                  setAnchor(day);
+                  setView("day");
+                }}
+              />
+            ) : null}
+            {view === "year" ? (
+              <BookingYearView
+                anchor={anchor}
+                appointments={filteredAppointments}
+                onSelectMonth={(monthStart) => {
+                  setAnchor(monthStart);
+                  setView("month");
+                }}
+              />
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
 
       <BookingFiltersSheet
         open={filterSheetOpen}
