@@ -33,6 +33,30 @@ export const BOOKING_APPOINTMENT_TYPES = [
   "New Patient Visit",
 ] as const;
 
+export type BookingAppointmentType = (typeof BOOKING_APPOINTMENT_TYPES)[number];
+
+/** Default visit length per booking type (quarter-hour snapped). */
+export const BOOKING_APPOINTMENT_TYPE_DURATION_MINS: Record<
+  BookingAppointmentType,
+  number
+> = {
+  "Follow-up Visit": 30,
+  "Wellness Visit": 45,
+  "Post-Acute Follow-up": 60,
+  "Chronic Care Visit": 30,
+  "New Patient Visit": 60,
+};
+
+export function durationMinsForBookingAppointmentType(
+  appointmentType: string,
+): number {
+  const mapped =
+    BOOKING_APPOINTMENT_TYPE_DURATION_MINS[
+      appointmentType as BookingAppointmentType
+    ];
+  return snapDurationToQuarterHourMinutes(mapped ?? 30);
+}
+
 function makeAppointmentId(): string {
   if (
     typeof crypto !== "undefined" &&
@@ -62,9 +86,11 @@ export type CreateAppointmentInput = {
   time: string;
   reason: string;
   appointmentType: string;
-  estimatedDurationMins: number;
-  pcp: string;
-  navigator: string;
+  /** Seed may override type-based duration. */
+  estimatedDurationMins?: number;
+  /** Booking derives from patient profile when omitted. */
+  pcp?: string;
+  navigator?: string;
 };
 
 function normalizeBookingTiming(time: string, estimatedDurationMins: number) {
@@ -85,10 +111,10 @@ export function createAppointmentFromBookingInput(
     throw new Error(`Unknown patient ${input.patientId}`);
   }
 
-  const timing = normalizeBookingTiming(
-    input.time,
-    input.estimatedDurationMins,
-  );
+  const durationMins =
+    input.estimatedDurationMins ??
+    durationMinsForBookingAppointmentType(input.appointmentType);
+  const timing = normalizeBookingTiming(input.time, durationMins);
 
   const missing = [...DEFAULT_MISSING];
   const seed: Appointment = {
@@ -103,8 +129,8 @@ export function createAppointmentFromBookingInput(
     reason: input.reason.trim() || "Follow-up",
     appointmentType: input.appointmentType,
     estimatedDurationMins: timing.estimatedDurationMins,
-    pcp: input.pcp,
-    navigator: input.navigator,
+    pcp: input.pcp ?? profile.summary.pcpDisplayName,
+    navigator: input.navigator ?? profile.summary.navigatorDisplayName,
     checkedInAt: null,
     missingFormNames: missing,
     ...intakeBundleProgressFromMissing(missing),

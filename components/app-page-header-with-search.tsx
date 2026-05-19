@@ -131,7 +131,7 @@ export function AppPageHeaderWithSearch({
     ) : null;
 
   return (
-    <div className="w-full shrink-0 border-b border-border/50 bg-background max-md:border-border/60">
+    <div className="box-border w-full min-w-full shrink-0 self-stretch border-b border-border/50 bg-background max-md:border-border/60">
       <div className="max-md:pt-[env(safe-area-inset-top)]">
         <div
           ref={headerBarRef}

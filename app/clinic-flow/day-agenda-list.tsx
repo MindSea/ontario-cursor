@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { format, parseISO } from "date-fns";
-
+import { formatArrivalClock } from "@/lib/calendar-format";
 import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -13,14 +12,6 @@ import { partitionAgendaDay } from "./schedule-agenda";
 import type { FilteredMatchDayOption } from "./schedule-date-row";
 import { ScheduleDateRow } from "./schedule-date-row";
 import { formatAppointmentStage } from "./stage-display";
-
-function formatArrivalClock(iso: string): string {
-  try {
-    return format(parseISO(iso), "hh:mm a");
-  } catch {
-    return "—";
-  }
-}
 
 export function DayAgendaList({
   appointments: items,

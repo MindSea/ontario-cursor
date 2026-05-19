@@ -2,23 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Trash2 } from "lucide-react";
 
 import {
   BOOKING_APPOINTMENT_TYPES,
-  BOOKING_DURATION_OPTIONS,
   BOOKING_SLOT_TIMES,
   createAppointmentFromBookingInput,
+  durationMinsForBookingAppointmentType,
   formatBookingDateInput,
 } from "@/app/clinic-flow/create-appointment";
-import {
-  snapClockToQuarterHour,
-  snapDurationToQuarterHourMinutes,
-} from "@/app/clinic-flow/schedule-clock";
-import {
-  CLINIC_FLOW_SEED_NAVIGATORS,
-  CLINIC_FLOW_SEED_PCPS,
-} from "@/app/clinic-flow/seed-appointments";
+import { snapClockToQuarterHour } from "@/app/clinic-flow/schedule-clock";
 import type { Appointment } from "@/app/clinic-flow/types";
 import { listPatientsForPanelInbox } from "@/app/patient-profile/patient-profile-seed";
 import type { PatientId } from "@/app/patient-profile/types";
@@ -30,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -38,8 +32,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { textBody } from "@/lib/typography";
+import { textBody, textMeta } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+
+/** Matches {@link SelectTrigger} `default` size for aligned date/time row. */
+const bookingFieldTriggerClass = cn(
+  "flex h-8 w-full min-w-0 items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent px-2.5 text-base whitespace-nowrap transition-colors outline-none select-none",
+  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+  "dark:bg-input/30 dark:hover:bg-input/50",
+);
 
 export function BookingAppointmentDialog({
   open,
@@ -69,10 +70,14 @@ export function BookingAppointmentDialog({
   const [appointmentType, setAppointmentType] = useState<string>(
     BOOKING_APPOINTMENT_TYPES[0],
   );
-  const [durationMins, setDurationMins] = useState("30");
-  const [pcp, setPcp] = useState("");
-  const [navigator, setNavigator] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const selectedPatient = useMemo(
+    () => roster.find((r) => r.patientId === patientId),
+    [roster, patientId],
+  );
+
+  const durationMins = durationMinsForBookingAppointmentType(appointmentType);
 
   const formKey = open
     ? mode === "edit" && appointment
@@ -90,15 +95,6 @@ export function BookingAppointmentDialog({
         setTime(snapClockToQuarterHour(appointment.time));
         setReason(appointment.reason);
         setAppointmentType(appointment.appointmentType);
-        setDurationMins(
-          String(
-            snapDurationToQuarterHourMinutes(
-              appointment.estimatedDurationMins,
-            ),
-          ),
-        );
-        setPcp(appointment.pcp);
-        setNavigator(appointment.navigator);
         return;
       }
       setPatientId("");
@@ -106,34 +102,19 @@ export function BookingAppointmentDialog({
       setTime(BOOKING_SLOT_TIMES[0]);
       setReason("");
       setAppointmentType(BOOKING_APPOINTMENT_TYPES[0]);
-      setDurationMins("30");
-      setPcp("");
-      setNavigator("");
     });
   }, [open, mode, appointment, defaultDate, formKey]);
 
-  const onPatientChange = (id: PatientId) => {
-    setPatientId(id);
-    const row = roster.find((r) => r.patientId === id);
-    if (row) {
-      setPcp(row.pcpDisplayName);
-      setNavigator(row.navigatorDisplayName);
-    }
-  };
-
   const handleSubmit = () => {
-    const rawMins = Number.parseInt(durationMins, 10);
-    if (
-      !patientId ||
-      !date ||
-      !time ||
-      !Number.isFinite(rawMins) ||
-      rawMins < 1
-    ) {
-      return;
-    }
+    if (!patientId || !date || !time) return;
+
+    const row = roster.find((r) => r.patientId === patientId);
+    if (!row) return;
+
     const snappedTime = snapClockToQuarterHour(time);
-    const snappedMins = snapDurationToQuarterHourMinutes(rawMins);
+    const estimatedDurationMins =
+      durationMinsForBookingAppointmentType(appointmentType);
+
     if (mode === "create") {
       onSaveCreate(
         createAppointmentFromBookingInput({
@@ -142,28 +123,20 @@ export function BookingAppointmentDialog({
           time: snappedTime,
           reason,
           appointmentType,
-          estimatedDurationMins: snappedMins,
-          pcp: pcp || roster.find((r) => r.patientId === patientId)!.pcpDisplayName,
-          navigator:
-            navigator ||
-            roster.find((r) => r.patientId === patientId)!.navigatorDisplayName,
         }),
       );
     } else if (appointment) {
-      const row = roster.find((r) => r.patientId === patientId);
       onSaveEdit(appointment.id, {
         patientId,
         date,
         time: snappedTime,
         reason: reason.trim() || appointment.reason,
         appointmentType,
-        estimatedDurationMins: snappedMins,
-        pcp,
-        navigator,
-        patientName: row?.displayName ?? appointment.patientName,
-        dateOfBirth: row
-          ? format(parseISO(row.dateOfBirth), "yyyy-MM-dd")
-          : appointment.dateOfBirth,
+        estimatedDurationMins,
+        pcp: row.pcpDisplayName,
+        navigator: row.navigatorDisplayName,
+        patientName: row.displayName,
+        dateOfBirth: format(parseISO(row.dateOfBirth), "yyyy-MM-dd"),
       });
     }
     onOpenChange(false);
@@ -181,18 +154,18 @@ export function BookingAppointmentDialog({
       }}
     >
       <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-md">
-        <DialogHeader>
+        <DialogHeader className="gap-2 pb-0">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        <div key={formKey} className={cn("grid gap-3", textBody)}>
+        <div key={formKey} className={cn("mt-4 grid gap-3", textBody)}>
           <div className="grid gap-1.5">
             <label className="text-sm font-medium" htmlFor="booking-patient">
               Patient
             </label>
             <Select
               value={patientId || undefined}
-              onValueChange={(v) => onPatientChange(v as PatientId)}
+              onValueChange={(v) => setPatientId(v as PatientId)}
               disabled={mode === "edit"}
             >
               <SelectTrigger id="booking-patient" className="w-full">
@@ -206,21 +179,54 @@ export function BookingAppointmentDialog({
                 ))}
               </SelectContent>
             </Select>
+            {selectedPatient ? (
+              <p className={cn("m-0", textMeta)}>
+                PCP: {selectedPatient.pcpDisplayName}
+                <span className="text-muted-foreground/65" aria-hidden>
+                  {" "}
+                  ·{" "}
+                </span>
+                Navigator: {selectedPatient.navigatorDisplayName}
+              </p>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <label className="text-sm font-medium" htmlFor="booking-date">
+            <div className="grid min-w-0 gap-1.5">
+              <span className="text-sm font-medium" id="booking-date-label">
                 Date
-              </label>
-              <Input
-                id="booking-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
+              </span>
+              <DatePicker
+                value={date || undefined}
+                onChange={(next) => {
+                  if (next) setDate(next);
+                }}
+                contentClassName="z-1000"
+              >
+                <button
+                  type="button"
+                  id="booking-date"
+                  aria-labelledby="booking-date-label"
+                  className={cn(
+                    bookingFieldTriggerClass,
+                    !date && "text-muted-foreground",
+                  )}
+                >
+                  <span className="min-w-0 truncate text-left tabular-nums">
+                    {date ? (
+                      format(parseISO(date), "MMM d, yyyy")
+                    ) : (
+                      "Select date"
+                    )}
+                  </span>
+                  <CalendarIcon
+                    className="size-4 shrink-0 text-muted-foreground"
+                    aria-hidden
+                  />
+                </button>
+              </DatePicker>
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid min-w-0 gap-1.5">
               <label className="text-sm font-medium" htmlFor="booking-time">
                 Time
               </label>
@@ -251,78 +257,25 @@ export function BookingAppointmentDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <label className="text-sm font-medium" htmlFor="booking-type">
-                Type
-              </label>
-              <Select value={appointmentType} onValueChange={setAppointmentType}>
-                <SelectTrigger id="booking-type" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-1000">
-                  {BOOKING_APPOINTMENT_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <label className="text-sm font-medium" htmlFor="booking-duration">
-                Duration
-              </label>
-              <Select value={durationMins} onValueChange={setDurationMins}>
-                <SelectTrigger id="booking-duration" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-1000">
-                  {BOOKING_DURATION_OPTIONS.map((mins) => (
-                    <SelectItem key={mins} value={String(mins)}>
-                      {mins} min
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <label className="text-sm font-medium" htmlFor="booking-pcp">
-                PCP
-              </label>
-              <Select value={pcp} onValueChange={setPcp}>
-                <SelectTrigger id="booking-pcp" className="w-full">
-                  <SelectValue placeholder="PCP" />
-                </SelectTrigger>
-                <SelectContent className="z-1000">
-                  {CLINIC_FLOW_SEED_PCPS.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <label className="text-sm font-medium" htmlFor="booking-nav">
-                Navigator
-              </label>
-              <Select value={navigator} onValueChange={setNavigator}>
-                <SelectTrigger id="booking-nav" className="w-full">
-                  <SelectValue placeholder="Navigator" />
-                </SelectTrigger>
-                <SelectContent className="z-1000">
-                  {CLINIC_FLOW_SEED_NAVIGATORS.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="grid gap-1.5">
+            <label className="text-sm font-medium" htmlFor="booking-type">
+              Type
+            </label>
+            <Select value={appointmentType} onValueChange={setAppointmentType}>
+              <SelectTrigger id="booking-type" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-1000">
+                {BOOKING_APPOINTMENT_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className={cn("m-0", textMeta)}>
+              Duration: {durationMins} min
+            </p>
           </div>
         </div>
 

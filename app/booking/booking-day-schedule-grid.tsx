@@ -146,6 +146,7 @@ export function BookingScheduleDayColumn({
             if (apt) onSelectAppointment(apt);
           }}
           slotCssVar={BOOKING_SLOT_HEIGHT_VAR}
+          tileDisplay={viewMode === "day" ? "day" : "compact"}
         />
       </div>
     </div>

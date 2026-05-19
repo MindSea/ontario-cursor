@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 
-import { BookingWeekVisitTile } from "@/app/booking/booking-week-visit-tile";
+import {
+  BookingWeekVisitTile,
+  type BookingVisitTileDisplay,
+} from "@/app/booking/booking-week-visit-tile";
 import { cn } from "@/lib/utils";
 
 import { SLOT_COUNT } from "./day-schedule-grid";
@@ -159,12 +162,14 @@ export function ScheduleCascadeCard({
   selectedId,
   onSelectAppointment,
   slotCssVar,
+  tileDisplay = "compact",
   className,
 }: {
   segments: readonly ScheduleLaneCascadePlacement[];
   selectedId: string;
   onSelectAppointment: (id: string) => void;
   slotCssVar: string;
+  tileDisplay?: BookingVisitTileDisplay;
   className?: string;
 }) {
   const [hoverRaised, setHoverRaised] = useState(false);
@@ -204,6 +209,8 @@ export function ScheduleCascadeCard({
     >
       <BookingWeekVisitTile
         variant="cascade"
+        display={tileDisplay}
+        spanSlots={spanSlots}
         appointment={appointment}
         isSelected={isSelected}
         onSelect={() => onSelectAppointment(appointment.id)}

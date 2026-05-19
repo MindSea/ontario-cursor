@@ -8,6 +8,8 @@ import {
   type ScheduleCalendarLayoutMode,
   type ScheduleLaneCascadePlacement,
 } from "./schedule-bundle-layout";
+import type { BookingVisitTileDisplay } from "@/app/booking/booking-week-visit-tile";
+
 import { ScheduleCascadeCard } from "./schedule-cascade-card";
 import type { Appointment } from "./types";
 
@@ -34,12 +36,14 @@ export function ScheduleBundleGrid({
   selectedId,
   onSelectAppointment,
   slotCssVar = "--cf-slot",
+  tileDisplay = "compact",
 }: {
   appointments: readonly Appointment[];
   layoutMode: ScheduleCalendarLayoutMode;
   selectedId: string;
   onSelectAppointment: (id: string) => void;
   slotCssVar?: string;
+  tileDisplay?: BookingVisitTileDisplay;
   /** @deprecated Popovers removed; lane stacks surface every visit. */
   weekFlyoutSide?: "left" | "right";
 }) {
@@ -72,6 +76,7 @@ export function ScheduleBundleGrid({
           selectedId={selectedId}
           onSelectAppointment={onSelectAppointment}
           slotCssVar={slotCssVar}
+          tileDisplay={tileDisplay}
         />
       ))}
     </div>
